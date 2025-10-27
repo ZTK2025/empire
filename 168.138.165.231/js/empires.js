@@ -1,146 +1,128 @@
-// Importa Firebase en tu HTML antes de este JS
-// <script type="module" src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js"></script>
-// <script type="module" src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js"></script>
-// <script type="module" src="tuArchivoModificado.js"></script>
-
+// empires.js modificado para GitHub Pages y Firebase
 import { getDatabase, ref, set, get, child } from "firebase/database";
 import { app } from "./firebaseConfig.js"; // tu archivo con initializeApp
 
 const database = getDatabase(app);
 
-zynga = {
-  "ads": {
-    "WatchToEarn": {
-      "service": {
-        "available": function () {
+// ---------------- Dummy APIs ----------------
+const zynga = {
+  ads: {
+    WatchToEarn: {
+      service: {
+        available: () => {
           console.log("W2E avail");
           return false;
         },
-        "initializeFlash": function (oid, a, b, c) {
-          console.log("initF " + oid + ", " + a + ", " + b + ", " + c);
+        initializeFlash: (oid, a, b, c) => {
+          console.log("initF", oid, a, b, c);
           return false;
         }
       }
     }
   }
-}
+};
 
-statTracker = {
-  "logWorldObjectCount": function () {
+const statTracker = {
+  logWorldObjectCount: () => {
     console.log("World Count");
-    return;
   }
-}
+};
 
-ZYFrameManager = {
-  "reloadApp": function () {
+const ZYFrameManager = {
+  reloadApp: () => {
     console.log("Reload App");
     window.location.reload();
-    return;
   },
-  "navigateTo": function (a, b, c) {
-    console.log("Navigate To " + a + " - " + b + " - " + c);
-    return;
-  },
-  "openTab": function (a, b, c) {
-    console.log("Open Tab " + a + " - " + b + " - " + c);
-    return;
-  },
-  "switchToTab": function (a) {
-    console.log("Switch To Tab " + a);
-    return;
-  }
-}
+  navigateTo: (a, b, c) => console.log("Navigate To", a, b, c),
+  openTab: (a, b, c) => console.log("Open Tab", a, b, c),
+  switchToTab: (a) => console.log("Switch To Tab", a)
+};
 
 // ---------------- Firebase funciones ----------------
-
-// Guardar info del usuario
 function saveUserInfo(userId, name, level = 1, coins = 100) {
-  set(ref(database, 'users/' + userId), {
-    name: name,
-    level: level,
-    coins: coins
-  }).then(() => {
-    console.log("Usuario guardado en Firebase");
-  }).catch((error) => {
-    console.error(error);
-  });
+  set(ref(database, 'users/' + userId), { name, level, coins })
+    .then(() => console.log("Usuario guardado en Firebase"))
+    .catch((error) => console.error(error));
 }
 
-// Leer info del usuario
 function loadUserInfo(userId) {
   const dbRef = ref(database);
-  get(child(dbRef, 'users/' + userId)).then((snapshot) => {
-    if (snapshot.exists()) {
-      console.log("Datos usuario:", snapshot.val());
-    } else {
-      console.log("No hay datos para el usuario");
-    }
-  }).catch((error) => {
-    console.error(error);
-  });
+  get(child(dbRef, 'users/' + userId))
+    .then((snapshot) => {
+      if (snapshot.exists()) {
+        console.log("Datos usuario:", snapshot.val());
+      } else {
+        console.log("No hay datos para el usuario");
+      }
+    })
+    .catch((error) => console.error(error));
 }
 
-// Guardar amigos
 function saveFriend(userId, friendId, friendName) {
-  set(ref(database, 'friends/' + userId + '/' + friendId), {
-    name: friendName
-  });
+  set(ref(database, 'friends/' + userId + '/' + friendId), { name: friendName });
 }
 
-// Leer amigos
 function loadFriends(userId) {
   const dbRef = ref(database);
-  get(child(dbRef, 'friends/' + userId)).then((snapshot) => {
-    if (snapshot.exists()) {
-      console.log("Amigos:", snapshot.val());
-    } else {
-      console.log("No hay amigos guardados");
-    }
-  });
+  get(child(dbRef, 'friends/' + userId))
+    .then((snapshot) => {
+      if (snapshot.exists()) {
+        console.log("Amigos:", snapshot.val());
+      } else {
+        console.log("No hay amigos guardados");
+      }
+    });
 }
 
 // ---------------- Game functions ----------------
-
 function inner_getUserInfo() {
-  document.getElementById("loading_message").innerHTML = "Loading User info...";
-  document.getElementById("inner_progress_bar").style.width = "30%";
-  document.getElementById("flash_enabler").style.display = "none";
+  const loadingMessage = document.getElementById("loading_message");
+  const progressBar = document.getElementById("inner_progress_bar");
+  const flashEnabler = document.getElementById("flash_enabler");
 
-  const userId = "user123"; // reemplaza por login real si quieres
-  saveUserInfo(userId, "Jugador"); // guarda usuario en Firebase
-  loadUserInfo(userId); // lee info para debug
+  if (loadingMessage) loadingMessage.innerHTML = "Loading User info...";
+  if (progressBar) progressBar.style.width = "30%";
+  if (flashEnabler) flashEnabler.style.display = "none";
+
+  const userId = "user123"; // reemplaza por login real
+  saveUserInfo(userId, "Jugador");
+  loadUserInfo(userId);
 }
 
 function inner_getFriendData() {
-  document.getElementById("inner_progress_bar").style.width = "50%";
-  document.getElementById("loading_message").innerHTML = "Loading Friends data...";
+  const progressBar = document.getElementById("inner_progress_bar");
+  const loadingMessage = document.getElementById("loading_message");
+
+  if (progressBar) progressBar.style.width = "50%";
+  if (loadingMessage) loadingMessage.innerHTML = "Loading Friends data...";
 
   const userId = "user123";
-  saveFriend(userId, "friend1", "Amigo 1"); // guarda un amigo de ejemplo
-  loadFriends(userId); // lee amigos
+  saveFriend(userId, "friend1", "Amigo 1");
+  loadFriends(userId);
 }
 
 function inner_getAppFriendIds() {
-  document.getElementById("inner_progress_bar").style.width = "70%";
+  const progressBar = document.getElementById("inner_progress_bar");
+  if (progressBar) progressBar.style.width = "70%";
 }
 
 function inner_onGameLoaded(seen, popp, canvas) {
-  document.getElementById("inner_progress_bar").style.width = "100%";
-  document.getElementById("loading_game").style.display = "none";
+  const progressBar = document.getElementById("inner_progress_bar");
+  const loadingGame = document.getElementById("loading_game");
+  if (progressBar) progressBar.style.width = "100%";
+  if (loadingGame) loadingGame.style.display = "none";
 }
 
+// Dummy functions para compatibilidad
 function openInAppPurchaseAPI(gid, snid, snuid, cid, a, b, c) {
-  console.log("Purchase " + gid + ", " + snid + ", " + snuid + ", " + cid + ", " + a + ", " + b + ", " + c)
-  return;
+  console.log("Purchase", gid, snid, snuid, cid, a, b, c);
 }
+function hasPermission(perm, snuid, name) { console.log("Perm", perm, snuid, name); }
+function showPermissions(d) { console.log("Show Perm", d); }
 
-function hasPermission(perm, snuid, name) {
-  console.log("Perm " + perm + ", " + snuid + ", " + name)
-  return;
-}
-
-function showPermissions(d) {
-  console.log("Show Perm " + d)
-  return;
-}
+// ---------------- Ejecutar funciones al cargar la página ----------------
+window.addEventListener("load", () => {
+  inner_getUserInfo();
+  inner_getFriendData();
+  inner_getAppFriendIds();
+});
