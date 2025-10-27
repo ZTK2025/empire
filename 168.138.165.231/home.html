@@ -2,44 +2,77 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
+  <title>Empire Game</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Empire Game - Home</title>
   <style>
     body {
       margin: 0;
-      padding: 0;
-      background-color: #000;
-      color: #fff;
+      background-color: black;
+      color: white;
       font-family: Arial, sans-serif;
-      overflow: hidden;
+      text-align: center;
     }
+
+    #loading_game {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      background-color: #000;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+    }
+
+    #inner_progress_bar {
+      width: 0%;
+      height: 8px;
+      background-color: #4CAF50;
+      transition: width 0.5s;
+    }
+
+    #flash_enabler {
+      display: none;
+      color: yellow;
+      margin-top: 10px;
+    }
+
     #game-container {
       width: 100%;
       height: 100vh;
-      text-align: center;
-      position: relative;
-      background-color: #111;
+      display: none;
     }
   </style>
 </head>
-<body>
+<body onload="initializeGame()">
+
+  <div id="loading_game">
+    <h2 id="loading_message">Cargando juego...</h2>
+    <div id="progress_bar" style="width: 80%; background-color: #333;">
+      <div id="inner_progress_bar"></div>
+    </div>
+    <div id="flash_enabler">Por favor activa Flash para continuar.</div>
+  </div>
 
   <div id="game-container">
-    <!-- Aquí se carga tu juego original -->
-    <object id="gameObject" type="application/x-shockwave-flash" data="game.swf" width="100%" height="100%">
-      <param name="movie" value="game.swf">
+    <object
+      type="application/x-shockwave-flash"
+      data="https://168.138.165.231/files/empire-s.assets.zgncdn.com/assets/109338/ZGame.109338_tracer2.swf"
+      width="100%"
+      height="100%">
       <param name="allowScriptAccess" value="always">
       <param name="allowFullScreen" value="true">
       <param name="wmode" value="direct">
     </object>
   </div>
 
-  <!-- Firebase + conexión y guardado automático -->
+  <!-- Firebase -->
   <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.16.0/firebase-app.js";
-    import { getDatabase, ref, set, update } from "https://www.gstatic.com/firebasejs/10.16.0/firebase-database.js";
+    // Importar Firebase
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+    import { getDatabase, ref, set, get, child } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
 
-    // Configuración Firebase (tuya)
+    // Configuración de tu Firebase
     const firebaseConfig = {
       apiKey: "AIzaSyBJZ4HvSxc3Ed_mlgNMQfGQ0QFGDMAoFkk",
       authDomain: "empire-6ea26.firebaseapp.com",
@@ -51,60 +84,61 @@
 
     // Inicializar Firebase
     const app = initializeApp(firebaseConfig);
-    const db = getDatabase(app);
+    const database = getDatabase(app);
 
-    // --------------------------
-    // 🔹 Guardado Automático
-    // --------------------------
-    function savePlayer(userId, playerData) {
-      update(ref(db, "players/" + userId), playerData)
-        .then(() => console.log("✅ Jugador guardado en Firebase:", playerData))
-        .catch(err => console.error("❌ Error guardando jugador:", err));
+    // ---------------- FUNCIONES DEL JUEGO ----------------
+    function initializeGame() {
+      document.getElementById("loading_message").innerText = "Conectando a Firebase...";
+      document.getElementById("inner_progress_bar").style.width = "20%";
+
+      // Simular conexión y carga de datos del jugador
+      const userId = "user123";
+      saveUserData(userId, "Jugador");
+      loadUserData(userId);
+      saveFriend(userId, "friend1", "Amigo 1");
+      loadFriends(userId);
+
+      setTimeout(() => {
+        document.getElementById("inner_progress_bar").style.width = "100%";
+        document.getElementById("loading_message").innerText = "Cargando juego...";
+        setTimeout(() => {
+          document.getElementById("loading_game").style.display = "none";
+          document.getElementById("game-container").style.display = "block";
+        }, 1000);
+      }, 1500);
     }
 
-    function saveFriends(userId, friendsList) {
-      update(ref(db, "friends/" + userId), { list: friendsList })
-        .then(() => console.log("✅ Amigos guardados en Firebase:", friendsList))
-        .catch(err => console.error("❌ Error guardando amigos:", err));
+    function saveUserData(userId, name, level = 1, coins = 100) {
+      set(ref(database, 'users/' + userId), {
+        name,
+        level,
+        coins
+      }).then(() => {
+        console.log("Usuario guardado:", name);
+      });
     }
 
-    // --------------------------
-    // 🔹 Simulación temporal
-    // --------------------------
-    // (Aquí deberías usar los datos reales del juego)
-    const userId = "user_" + Math.floor(Math.random() * 999999);
-    const playerData = {
-      name: "Jugador_" + Math.floor(Math.random() * 1000),
-      level: 1,
-      gold: 500,
-      lastLogin: Date.now()
-    };
-    const friendsList = ["friend_1", "friend_2", "friend_3"];
+    function loadUserData(userId) {
+      const dbRef = ref(database);
+      get(child(dbRef, 'users/' + userId)).then(snapshot => {
+        if (snapshot.exists()) console.log("Datos usuario:", snapshot.val());
+        else console.log("No hay datos del usuario");
+      });
+    }
 
-    // Guardar automáticamente al cargar
-    savePlayer(userId, playerData);
-    saveFriends(userId, friendsList);
+    function saveFriend(userId, friendId, friendName) {
+      set(ref(database, 'friends/' + userId + '/' + friendId), { name: friendName });
+      console.log("Amigo guardado:", friendName);
+    }
 
-    // --------------------------
-    // 🔹 Comunicación con tu juego
-    // --------------------------
-    // Si tu SWF usa ExternalInterface.call("saveData", datos)
-    // puedes escuchar esos mensajes así:
-    window.addEventListener("message", (event) => {
-      if (event.data?.type === "playerUpdate") {
-        savePlayer(event.data.userId, event.data.data);
-      }
-      if (event.data?.type === "friendUpdate") {
-        saveFriends(event.data.userId, event.data.list);
-      }
-    });
-
+    function loadFriends(userId) {
+      const dbRef = ref(database);
+      get(child(dbRef, 'friends/' + userId)).then(snapshot => {
+        if (snapshot.exists()) console.log("Amigos:", snapshot.val());
+        else console.log("No hay amigos guardados");
+      });
+    }
   </script>
-
-  <!-- Tus scripts -->
-  <script type="module" src="firebaseConfig.js"></script>
-  <script type="module" src="session.js"></script>
-  <script type="module" src="socketio.js"></script>
 
 </body>
 </html>
