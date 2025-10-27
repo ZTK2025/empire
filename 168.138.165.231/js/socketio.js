@@ -1,3 +1,4 @@
+// socketio.js modificado para GitHub Pages y Firebase
 import { getDatabase, ref, set, push } from "firebase/database";
 import { app } from "./firebaseConfig.js"; // tu archivo con initializeApp
 
@@ -11,20 +12,23 @@ function logEvent(type, msg) {
     set(newLogRef, {
         message: msg,
         timestamp: Date.now()
-    });
+    }).catch(e => console.error("Error guardando log:", e));
 }
 
 // Simular 'connect'
 console.log("Connected to Firebase logs");
 
 // Simular 'delete_save' click
-document.getElementById('delete_save')?.addEventListener('click', function(event) {
-    console.log('deleting save');
-    logEvent('delete_save', "Deleting save game");
+const deleteBtn = document.getElementById('delete_save');
+if (deleteBtn) {
+    deleteBtn.addEventListener('click', function(event) {
+        console.log('deleting save');
+        logEvent('delete_save', "Deleting save game");
 
-    console.log('deleting cookie');
-    document.cookie = "session=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-});
+        console.log('deleting cookie');
+        document.cookie = "session=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+    });
+}
 
 // Simular logs recibidos
 function simulateLog(type, msg) {
@@ -40,8 +44,5 @@ function simulateLog(type, msg) {
     }
 }
 
-// Ejemplos de uso
-// simulateLog('tutorial_step', {step: 1, info: "Tutorial iniciado"});
-// simulateLog('world_log', {event: "Movimiento unidad", data: {unit: "Infantería"}});
-// simulateLog('other_log', {msg: "Otro log de juego"});
-// simulateLog('battle_log', {msg: "Batalla iniciada"});
+// ---------------- Exportar la función para otros módulos ----------------
+export { logEvent, simulateLog };
