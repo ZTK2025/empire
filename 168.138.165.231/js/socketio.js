@@ -1,47 +1,47 @@
-/* debug websocket connection */
+import { getDatabase, ref, set, push } from "firebase/database";
+import { app } from "./firebaseConfig.js"; // tu archivo con initializeApp
 
-var socket = io();
-socket.on('connect', function () {
-    socket.emit('my event', {data: 'I\'m connected!'});
+const database = getDatabase(app);
 
-    $('#delete_save').click(function(event) {
-        console.log('deleting save');
-        // event.preventDefault();
+// ---------------- Simular socket.io con Firebase ----------------
+// Cada evento se guardará en Firebase en lugar de socket.io
 
-        socket.emit('delete_save', "Deleting save game");
-
-        console.log('deleting cookie');
-        // $.cookie("session", null, { path: '/' });
-        // $.removeCookie('the_cookie', { path: '/' });
-
+function logEvent(type, msg) {
+    const newLogRef = push(ref(database, 'logs/' + type));
+    set(newLogRef, {
+        message: msg,
+        timestamp: Date.now()
     });
+}
 
-});
-socket.on('tutorial_step', function (msg) {
-    console.log(msg);
-    // $('#tutorial_step').prepend('<div>' + JSON.stringify(msg) + '</div>');
-    $('#tutorial_step').prepend('<div><span class="req'+msg[6] + ' ' + (parseInt(msg[6].substring(1)) % 2 == 0 ? 'req_even' : 'req_odd' ) + '">' + msg[5] + ': </span><span class="tooltiplink">' + msg[0] + '<span class="tooltip">' + JSON.stringify(msg[3], null, 4).replace(/\n/g, "<br>").replace(/[ ]/g, "&nbsp;") + '</span></span>'
-        + (msg[1] || msg[2] ? ' &rarr; ' : '') + (msg[1] ? '<span class="tooltiplink response">' + JSON.stringify(msg[1]) + '<span class="tooltip">' + JSON.stringify(msg[4], null, 4).replace(/\n/g, "<br>").replace(/[ ]/g, "&nbsp;") + '</span></span>' : '') +
-        (msg[1] && msg[2] ? ', ' : '') + (msg[2] ? JSON.stringify(msg[2]) : '') + '</div>');
-    $('#tutorial_step').scrollTop(0)
-});
+// Simular 'connect'
+console.log("Connected to Firebase logs");
 
-socket.on('world_log', function (msg) {
-    console.log(msg);
-    $('#world_log').prepend('<div><span class="req'+msg[4] + ' ' + (parseInt(msg[4].substring(1)) % 2 == 0 ? 'req_even' : 'req_odd' ) + '">' + msg[3] + ': </span><span class="tooltiplink">' + msg[0] + '<span class="tooltip">' + JSON.stringify(msg[2], null, 4).replace(/\n/g, "<br>").replace(/[ ]/g, "&nbsp;") +
-        '</span></span>' + (msg[1] || msg[1] == 0 ? ' &rarr; <span class="tooltiplink response">' + msg[1] + '<span class="tooltip">' + JSON.stringify(msg[8], null, 4).replace(/\n/g, "<br>").replace(/[ ]/g, "&nbsp;") + '</span></span>' + (msg[5] ? ', <span class="tooltiplink response">' + JSON.stringify(msg[5]) + '<span class="tooltip">'+ JSON.stringify(msg[7], null, 4).replace(/\n/g, "<br>").replace(/[ ]/g, "&nbsp;") + '</span></span>' : '') + (msg[6] ? ', ' + JSON.stringify(msg[6]) :'')  : '') + '</div>');
-    $('#world_log').scrollTop(0)
-});
-    socket.on('other_log', function (msg) {
-    console.log(msg);
-    $('#other_log').prepend('<div><span class="req'+ msg[4] + ' ' + (parseInt(msg[4].substring(1)) % 2 == 0 ? 'req_even' : 'req_odd' ) + '">' + msg[3] + ': </span><span class="tooltiplink">' + msg[0] + '<span class="tooltip">' + JSON.stringify(msg[2], null, 4).replace(/\n/g, "<br>").replace(/[ ]/g, "&nbsp;") +
-        '</span></span>' + (msg[1] ? ' &rarr; <span class="tooltiplink response">response<span class="tooltip">' + JSON.stringify(msg[1], null, 4).replace(/\n/g, "<br>").replace(/[ ]/g, "&nbsp;") + '</span></span>' : '')
-        + '</div>');
-    $('#other_log').scrollTop(0)
+// Simular 'delete_save' click
+document.getElementById('delete_save')?.addEventListener('click', function(event) {
+    console.log('deleting save');
+    logEvent('delete_save', "Deleting save game");
+
+    console.log('deleting cookie');
+    document.cookie = "session=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
 });
 
-socket.on('battle_log', function (msg) {
+// Simular logs recibidos
+function simulateLog(type, msg) {
     console.log(msg);
-    $('#world_log').prepend('<div>' + msg + '</div>');
-    $('#world_log').scrollTop(0)
-});
+    logEvent(type, msg);
+
+    const container = document.getElementById(type + '_log');
+    if (container) {
+        const div = document.createElement('div');
+        div.innerHTML = JSON.stringify(msg);
+        container.prepend(div);
+        container.scrollTop = 0;
+    }
+}
+
+// Ejemplos de uso
+// simulateLog('tutorial_step', {step: 1, info: "Tutorial iniciado"});
+// simulateLog('world_log', {event: "Movimiento unidad", data: {unit: "Infantería"}});
+// simulateLog('other_log', {msg: "Otro log de juego"});
+// simulateLog('battle_log', {msg: "Batalla iniciada"});
