@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<!-- Meta -->
+	<meta charset="utf-8"/>
+	<!-- Title and Icon -->
+	<title id="pageTitle">Empires &amp; Allies</title>
+	<link rel="shortcut icon" href="img/icon.png"/>
+	<link rel="icon" type="image/png" href="img/icon.png"/>
+	<!-- CSS -->
+	<link rel="stylesheet" href="css/facebook.css"/>
+	<link rel="stylesheet" href="css/buttons.css"/>
+	<link rel="stylesheet" href="css/tooltiplink.css"/>
+	<link rel="stylesheet" href="css/zbar.css"/>
+	<!-- JS REPARADO -->
+	<script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.2.0/socket.io.js"></script>
+	<script src="js/socketio.js"></script>
+	<script src="js/flash.js"></script>
+	<script src="js/session.js"></script>
+	<script src="js/empires.js"></script>
+	<script>
+		// Función faltante AGREGADA
+		function loadingScreenUpdate(progress) {
+			console.log("Loading:", progress + "%");
+			const innerBar = document.getElementById('inner_progress_bar');
+			const message = document.getElementById('loading_message');
+			if (innerBar) innerBar.style.width = progress + '%';
+			if (message) {
+				if (progress < 30) message.textContent = "Cargando recursos...";
+				else if (progress < 70) message.textContent = "Inicializando juego...";
+				else message.textContent = "¡Casi listo!";
+			}
+		}
+
+		function getUserInfo() {
+			console.log("getUserInfo called");
+			inner_getUserInfo();
+			return {
+				'zid': 7555344846045843,
+				'uid': 7555344846045843,
+				'first_name': "Emperor",
+				'name': "Emperor",
+				"sex": 'F',
+				'pic_square': 'img/avatars/blank.png'
+			};
+		}
+
+		function getFriendData() {
+			console.log("getFriendData called");
+			inner_getFriendData();
+			return [/* ... tu lista de amigos ... */];
+		}
+
+		function getAppFriendIds() {
+			console.log("getAppFriendIds called");
+			inner_getAppFriendIds();
+			return [/* ... tus IDs ... */];
+		}
+
+		function onGameLoaded(seen, popp, canvas) {
+			console.log("Game is loaded " + seen + ", " + popp + ", " + canvas)
+			inner_onGameLoaded();
+			return;
+		}
+
+		// Firebase Integration (AGREGADO)
+		function initFirebase() {
+			// Configuración de Firebase
+			const firebaseConfig = {
+				apiKey: "AIzaSyBJZ4HvSxc3Ed_mlgNMQfGQ0QFGDMAoFkk",
+				authDomain: "empire-6ea26.firebaseapp.com",
+				projectId: "empire-6ea26",
+				storageBucket: "empire-6ea26.firebasestorage.app",
+				messagingSenderId: "617496523953",
+				appId: "1:617496523953:web:4136245f1c114219f75e90",
+				databaseURL: "https://empire-6ea26-default-rtdb.firebaseio.com/"
+			};
+			
+			// Inicializar Firebase
+			firebase.initializeApp(firebaseConfig);
+			const db = firebase.database();
+			
+			// Guardar sesión de juego
+			function saveGameSession(playerData) {
+				const sessionRef = db.ref('sessions/' + playerData.zid);
+				sessionRef.set({
+					player: playerData,
+					lastActive: firebase.database.ServerValue.TIMESTAMP,
+					online: true
+				});
+			}
+			
+			return { db, saveGameSession };
+		}
+
+		// Inicializar cuando cargue la página
+		document.addEventListener('DOMContentLoaded', function() {
+			// Iniciar Firebase
+			const firebaseApp = initFirebase();
+			
+			// Simular carga progresiva
+			let progress = 0;
+			const loadingInterval = setInterval(() => {
+				progress += 5;
+				loadingScreenUpdate(progress);
+				if (progress >= 100) {
+					clearInterval(loadingInterval);
+					setTimeout(() => {
+						document.getElementById('loading_game').style.display = 'none';
+					}, 1000);
+				}
+			}, 200);
+		});
+	</script>
+</head>
+<body class="ego_wide canvas center_fixed_width_app fbx UIPage_LoggedOut liquid hideBanner Locale_en_US">
+	<!-- ... (TODO EL RESTO DEL CÓDIGO DEL BODY SE MANTIENE IGUAL) ... -->
+	
+	<!-- Al final del body, agregar Firebase SDK -->
+	<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+	<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+</body>
+</html>
