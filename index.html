@@ -1,55 +1,334 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
-	<!-- Meta -->
-	<meta charset="utf-8"/>
-	<!-- Title and Icon -->
-	<title id="pageTitle">Empires &amp; Allies</title>
-	<link rel="shortcut icon" href="img/icon.png"/>
-	<link rel="icon" type="image/png" href="img/icon.png"/>
-	<!-- CSS -->
-    <link rel="stylesheet" href="css/facebook.css"/>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Empire & Allies - Revived</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #1e3c72, #2a5298);
+            color: white;
+            margin: 0;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .logo {
+            font-size: 3em;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+        
+        .menu-button {
+            background: #ff6b00;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            margin: 10px;
+            font-size: 1.2em;
+            border-radius: 5px;
+            cursor: pointer;
+            width: 200px;
+            transition: all 0.3s;
+        }
+        
+        .menu-button:hover {
+            background: #ff8c00;
+            transform: scale(1.05);
+        }
+        
+        .profile-section {
+            background: rgba(255,255,255,0.1);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        
+        .profile-item {
+            background: rgba(255,255,255,0.2);
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            text-align: left;
+            border-left: 4px solid #00b894;
+        }
+        
+        .profile-button {
+            background: #00b894;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 3px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        
+        .delete-button {
+            background: #e17055;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 3px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        
+        input {
+            padding: 12px;
+            margin: 10px;
+            border: none;
+            border-radius: 5px;
+            width: 250px;
+            font-size: 1em;
+        }
+        
+        .loading {
+            color: #ffeaa7;
+            font-size: 1.2em;
+        }
+        
+        .error {
+            color: #ff7675;
+            background: rgba(255,255,255,0.1);
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+    </style>
 </head>
-<body class="ego_wide canvas center_fixed_width_app fbx UIPage_LoggedOut liquid hideBanner Locale_en_US" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); overflow: auto;">
-	<div class="mvl ptm uiInterstitial canvas_error_page uiInterstitialLarge uiBoxWhite">
-		<!-- HEAD TITLE -->
-		<div class="uiHeader uiHeaderBottomBorder mhl mts uiHeaderPage interstitialHeader">
-			<div class="clearfix uiHeaderTop">
-				<div>
-					<img src="img/epoints.png" height="18px" style="margin-left: 5px;">
-					<h2 class="uiHeaderTitle" aria-hidden="true" style="margin-left: 2px; display: inline-block;">
-						 <a href="#" style="text-decoration: none;">Empires &amp; Allies </a>
-					</h2>
-					<p style="display: inline-block; margin: 0 0 4px 6px;">By Raise the Empires team</p>
-				</div>
-			</div>
-		</div>
-		<!-- WECOME CONTENT -->
-		<div class="phl ptm uiInterstitialContent">
-			<br>
-			<b>Game version:</b> alpha 0.08a.2023_04_28 (<a href="releases.html">see Changes</a>)
-			<br>
-			<b>Release date:</b> Friday, 28 April 2023
-			<br><br><br>
-			<div style="position:relative;padding-top:56.25%;">
-				<iframe style="position:absolute;top:0;left:0;width:100%;height:100%;" src="https://www.youtube.com/embed/pAdlyz9miqo?controls=0" frameborder="0" allow="encrypted-media; picture-in-picture" allowfullscreen></iframe>
-			</div>
-		</div>
-		<!-- FOOTER -->
-		<div id="footer" class="uiInterstitialBar uiBoxGray topborder">
-			<div class="clearfix">
-				<div class="rfloat">
-					<a class="uiButton uiButtonConfirm" href="login.html" role="button" name="try_again_button">
-						<span class="uiButtonText">Play now</span>
-					</a>
-				</div>
-			</div>
-		</div>
-	</div>
-	<!-- LOADING -->
-	<div id="canvas_throbber">
-		<div class="mbl fsl fwb" id="canvas_throbber_text">Loading...</div>
-		<img class="mtl img" src="img/loading.gif" alt="" width="32" height="32"/>
-	</div>
+<body>
+    <div class="container">
+        <!-- Pantalla Principal -->
+        <div id="main-menu">
+            <div class="logo">🎮 EMPIRE & ALLIES</div>
+            <h2>REVIVED EDITION</h2>
+            <p style="color: #ffeaa7;">Proyecto Empire Revive</p>
+            
+            <div style="margin: 30px 0;">
+                <button class="menu-button" onclick="showProfileSelection()">🎯 JUGAR</button><br>
+                <button class="menu-button" onclick="showHowToPlay()">📚 CÓMO JUGAR</button><br>
+                <button class="menu-button" onclick="showCredits()">⭐ CRÉDITOS</button>
+            </div>
+        </div>
+
+        <!-- Selección de Perfiles -->
+        <div id="profile-selection" style="display: none;">
+            <h2>👤 SELECCIONA TU PERFIL</h2>
+            <p style="color: #dfe6e9;">Tus perfiles se guardan en la nube</p>
+            
+            <div id="profiles-list" class="profile-section">
+                <div class="loading">🔄 Cargando perfiles...</div>
+            </div>
+            
+            <div class="profile-section">
+                <h3>➕ CREAR NUEVO PERFIL</h3>
+                <input type="text" id="new-profile-name" placeholder="Nombre de tu comandante" maxlength="20">
+                <br>
+                <button class="menu-button" onclick="createNewProfile()">✨ CREAR PERFIL</button>
+            </div>
+            
+            <button class="menu-button" onclick="showMainMenu()" style="background: #636e72;">↩️ VOLVER</button>
+        </div>
+
+        <!-- Cómo Jugar -->
+        <div id="how-to-play" style="display: none;">
+            <h2>🎯 CÓMO JUGAR</h2>
+            <div style="text-align: left; background: rgba(255,255,255,0.1); padding: 20px; border-radius: 10px;">
+                <p>1. <strong>🎖️ Crea tu perfil</strong> - Elige un nombre para tu comandante</p>
+                <p>2. <strong>🏗️ Construye tu base</strong> - Edifica cuarteles, refinerías y fábricas</p>
+                <p>3. <strong>⚔️ Recluta ejército</strong> - Entrena soldados y vehículos de combate</p>
+                <p>4. <strong>🛡️ Gestiona recursos</strong> - Consigue oro, petróleo y materiales</p>
+                <p>5. <strong>🚀 Investiga tecnología</strong> - Mejora tus unidades y edificios</p>
+                <p>6. <strong>🌎 Domina el territorio</strong> - Expande tu imperio</p>
+            </div>
+            <button class="menu-button" onclick="showMainMenu()" style="background: #636e72;">↩️ VOLVER</button>
+        </div>
+
+        <!-- Créditos -->
+        <div id="credits" style="display: none;">
+            <h2>⭐ CRÉDITOS</h2>
+            <div style="text-align: left; background: rgba(255,255,255,0.1); padding: 20px; border-radius: 10px;">
+                <p><strong>🎮 Juego Original:</strong> Zynga</p>
+                <p><strong>🔄 Versión Revivida:</strong> Empire Revive Project</p>
+                <p><strong>💻 Desarrollo:</strong> Comunidad Empire & Allies</p>
+                <p><strong>⚡ Tecnología:</strong> Firebase + HTML5</p>
+                <p><strong>🌐 Base de Datos:</strong> Google Firestore</p>
+            </div>
+            <button class="menu-button" onclick="showMainMenu()" style="background: #636e72;">↩️ VOLVER</button>
+        </div>
+    </div>
+
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+
+    <!-- Nuestros archivos -->
+    <script src="firebase/firebase-config.js"></script>
+    <script src="firebase/profiles.js"></script>
+
+    <script>
+        // Sistema de perfiles
+        const profileSystem = new ProfileSystem();
+
+        // Mostrar menú principal
+        function showMainMenu() {
+            hideAllSections();
+            document.getElementById('main-menu').style.display = 'block';
+        }
+
+        // Mostrar selección de perfiles
+        function showProfileSelection() {
+            hideAllSections();
+            document.getElementById('profile-selection').style.display = 'block';
+            loadProfilesFromFirebase();
+        }
+
+        // Mostrar cómo jugar
+        function showHowToPlay() {
+            hideAllSections();
+            document.getElementById('how-to-play').style.display = 'block';
+        }
+
+        // Mostrar créditos
+        function showCredits() {
+            hideAllSections();
+            document.getElementById('credits').style.display = 'block';
+        }
+
+        // Ocultar todas las secciones
+        function hideAllSections() {
+            const sections = ['main-menu', 'profile-selection', 'how-to-play', 'credits'];
+            sections.forEach(section => {
+                document.getElementById(section).style.display = 'none';
+            });
+        }
+
+        // Cargar perfiles desde Firebase
+        async function loadProfilesFromFirebase() {
+            const profilesList = document.getElementById('profiles-list');
+            profilesList.innerHTML = '<div class="loading">🔄 Cargando perfiles desde la nube...</div>';
+            
+            try {
+                const profiles = await profileSystem.loadAllProfiles();
+                
+                if (profiles.length === 0) {
+                    profilesList.innerHTML = '<div class="loading">📝 No hay perfiles guardados. ¡Crea el primero!</div>';
+                    return;
+                }
+                
+                profilesList.innerHTML = '<h3>📂 TUS PERFILES GUARDADOS</h3>';
+                profiles.forEach(profile => {
+                    const createdDate = profile.created ? new Date(profile.created.toDate()).toLocaleDateString() : 'Reciente';
+                    
+                    const profileDiv = document.createElement('div');
+                    profileDiv.className = 'profile-item';
+                    profileDiv.innerHTML = `
+                        <h4>🎖️ ${profile.name}</h4>
+                        <p><strong>Nivel:</strong> ${profile.level} | <strong>Oro:</strong> ${profile.gold}</p>
+                        <p><strong>Petróleo:</strong> ${profile.oil} | <strong>Soldados:</strong> ${profile.soldiers}</p>
+                        <p><strong>Creado:</strong> ${createdDate}</p>
+                        <button class="profile-button" onclick="selectProfile('${profile.id}')">
+                            ▶️ JUGAR
+                        </button>
+                        <button class="delete-button" onclick="deleteProfile('${profile.id}')">
+                            🗑️ ELIMINAR
+                        </button>
+                    `;
+                    profilesList.appendChild(profileDiv);
+                });
+            } catch (error) {
+                profilesList.innerHTML = '<div class="error">❌ Error cargando perfiles: ' + error.message + '</div>';
+            }
+        }
+
+        // Seleccionar perfil
+        async function selectProfile(profileId) {
+            try {
+                const profile = await profileSystem.loadProfileData(profileId);
+                if (profile) {
+                    profileSystem.selectProfile(profile);
+                    alert(`🎮 ¡Bienvenido Comandante ${profile.name}! \n\nCargando Empire & Allies...`);
+                    window.location.href = 'home.html';
+                }
+            } catch (error) {
+                alert("❌ Error seleccionando perfil: " + error.message);
+            }
+        }
+
+        // Eliminar perfil
+        async function deleteProfile(profileId) {
+            if (confirm('⚠️ ¿Estás seguro de que quieres eliminar este perfil?\n\nEsta acción no se puede deshacer.')) {
+                try {
+                    const success = await profileSystem.deleteProfile(profileId);
+                    if (success) {
+                        alert('✅ Perfil eliminado correctamente');
+                        loadProfilesFromFirebase(); // Recargar la lista
+                    }
+                } catch (error) {
+                    alert('❌ Error eliminando perfil: ' + error.message);
+                }
+            }
+        }
+
+        // Crear nuevo perfil
+        async function createNewProfile() {
+            const profileName = document.getElementById('new-profile-name').value.trim();
+            
+            if (!profileName) {
+                alert("⚠️ Por favor ingresa un nombre para tu comandante");
+                return;
+            }
+            
+            if (profileName.length < 3) {
+                alert("⚠️ El nombre debe tener al menos 3 caracteres");
+                return;
+            }
+            
+            if (profileName.length > 20) {
+                alert("⚠️ El nombre no puede tener más de 20 caracteres");
+                return;
+            }
+            
+            try {
+                // Mostrar carga
+                const createButton = document.querySelector('#profile-selection .menu-button');
+                createButton.innerHTML = '🔄 CREANDO...';
+                createButton.disabled = true;
+                
+                await profileSystem.createProfile(profileName);
+                
+                // Restaurar botón
+                createButton.innerHTML = '✨ CREAR PERFIL';
+                createButton.disabled = false;
+                document.getElementById('new-profile-name').value = '';
+                
+            } catch (error) {
+                // Restaurar botón en caso de error
+                const createButton = document.querySelector('#profile-selection .menu-button');
+                createButton.innerHTML = '✨ CREAR PERFIL';
+                createButton.disabled = false;
+            }
+        }
+
+        // Inicializar
+        window.onload = function() {
+            console.log("Empire & Allies - Revived Edition cargado");
+            console.log("Firebase Project: empirerevive-6571e");
+        };
+
+        // Tecla Enter para crear perfil
+        document.getElementById('new-profile-name')?.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                createNewProfile();
+            }
+        });
+    </script>
 </body>
 </html>
