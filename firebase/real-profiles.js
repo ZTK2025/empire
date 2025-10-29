@@ -1,5 +1,5 @@
-// firebase/real-profiles.js
-class RealProfileSystem {
+// firebase/profiles.js
+class ProfileSystem {
     constructor() {
         this.currentProfile = null;
     }
@@ -11,26 +11,29 @@ class RealProfileSystem {
                 name: profileName,
                 level: 1,
                 resources: 1000,
+                gold: 500,
+                oil: 500,
+                soldiers: 50,
                 base: {
-                    buildings: [],
-                    defenses: []
-                },
-                army: {
-                    units: [],
-                    level: 1
+                    headquarters: 1,
+                    barracks: 0,
+                    refinery: 0,
+                    factory: 0
                 },
                 created: firebase.firestore.FieldValue.serverTimestamp(),
                 lastPlayed: firebase.firestore.FieldValue.serverTimestamp()
             };
 
-            // Guardar en Firestore
             const docRef = await db.collection('profiles').add(profileData);
-            
             console.log("Perfil creado con ID:", docRef.id);
-            return { id: docRef.id, ...profileData };
+            
+            const newProfile = { id: docRef.id, ...profileData };
+            this.selectProfile(newProfile);
+            return newProfile;
             
         } catch (error) {
             console.error("Error creando perfil:", error);
+            alert("Error creando perfil: " + error.message);
             throw error;
         }
     }
@@ -42,7 +45,17 @@ class RealProfileSystem {
             const profiles = [];
             
             snapshot.forEach(doc => {
-                profiles.push({ id: doc.id, ...doc.data() });
+                const data = doc.data();
+                profiles.push({ 
+                    id: doc.id, 
+                    name: data.name,
+                    level: data.level || 1,
+                    resources: data.resources || 1000,
+                    gold: data.gold || 500,
+                    oil: data.oil || 500,
+                    soldiers: data.soldiers || 50,
+                    created: data.created
+                });
             });
             
             return profiles;
@@ -52,7 +65,7 @@ class RealProfileSystem {
         }
     }
 
-    // Seleccionar perfil (guardar en localStorage temporal)
+    // Seleccionar perfil
     selectProfile(profile) {
         this.currentProfile = profile;
         localStorage.setItem('selectedProfile', JSON.stringify(profile));
@@ -65,16 +78,16 @@ class RealProfileSystem {
         return saved ? JSON.parse(saved) : null;
     }
 
-    // Actualizar datos del perfil en Firebase
+    // Actualizar datos del perfil
     async updateProfile(profileId, newData) {
         try {
             await db.collection('profiles').doc(profileId).update({
                 ...newData,
                 lastPlayed: firebase.firestore.FieldValue.serverTimestamp()
             });
-            console.log("Perfil actualizado:", profileId);
+            console.log("Progreso guardado:", profileId);
         } catch (error) {
-            console.error("Error actualizando perfil:", error);
+            console.error("Error guardando progreso:", error);
         }
     }
 
@@ -87,8 +100,20 @@ class RealProfileSystem {
             }
             return null;
         } catch (error) {
-            console.error("Error cargando datos del perfil:", error);
+            console.error("Error cargando perfil:", error);
             return null;
+        }
+    }
+
+    // Eliminar perfil
+    async deleteProfile(profileId) {
+        try {
+            await db.collection('profiles').doc(profileId).delete();
+            console.log("Perfil eliminado:", profileId);
+            return true;
+        } catch (error) {
+            console.error("Error eliminando perfil:", error);
+            return false;
         }
     }
 }
