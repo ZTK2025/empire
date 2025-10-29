@@ -1,91 +1,38 @@
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Empire & Allies 2012 - Online</title>
-    <style>
-        body {
-            margin: 0;
-            background: #000;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-        }
-    </style>
-    <!-- Firebase -->
-    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Empire Game</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="script.js" defer></script>
 </head>
 <body>
+    <!-- Header o barra superior si la tenías -->
+    <header>
+        <h1>Empire Proyect</h1>
+        <!-- otros elementos de tu header -->
+    </header>
 
-    <!-- SWF del juego -->
-    <object id="gameSWF" type="application/x-shockwave-flash" data="empire.swf" width="1024" height="768">
-        <param name="movie" value="empire.swf" />
-        <param name="allowScriptAccess" value="always" />
-        <param name="flashVars" value="gameData={}" />
-    </object>
+    <!-- Contenedor del juego -->
+    <main>
+        <div id="game-container" style="text-align:center; margin-top:20px;">
+            <object 
+                type="application/x-shockwave-flash" 
+                data="files/empire-s.assets.zgncdn.com/assets/109338/ZGame.109338_tracer2.swf" 
+                width="1000" 
+                height="750">
+                <param name="movie" value="files/empire-s.assets.zgncdn.com/assets/109338/ZGame.109338_tracer2.swf" />
+                <param name="quality" value="high"/>
+                <p>Tu navegador no soporta Flash. Recomendamos usar un navegador que lo soporte o Ruffle.</p>
+            </object>
+        </div>
+    </main>
 
-    <script>
-        // Configuración de Firebase
-        const firebaseConfig = {
-            apiKey: "TU_API_KEY",
-            authDomain: "TU_PROJECT.firebaseapp.com",
-            databaseURL: "https://TU_PROJECT.firebaseio.com",
-            projectId: "TU_PROJECT_ID",
-            storageBucket: "TU_PROJECT.appspot.com",
-            messagingSenderId: "TU_SENDER_ID",
-            appId: "TU_APP_ID"
-        };
-
-        // Inicializar Firebase
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.database();
-
-        // ID de usuario (puede generarse dinámicamente)
-        const userId = "user_123";
-
-        // Función para cargar datos de Firebase e inyectarlos al SWF
-        function loadGameData() {
-            const userRef = db.ref('users/' + userId);
-
-            userRef.once('value').then(snapshot => {
-                let userData = snapshot.val();
-                
-                if (!userData) {
-                    // Datos por defecto si no existe el usuario
-                    userData = {
-                        level: 1,
-                        coins: 1000,
-                        friends: [],
-                        battleData: {}
-                    };
-                    userRef.set(userData);
-                }
-
-                // Convertir a JSON
-                const gameDataJSON = JSON.stringify(userData);
-
-                // Inyectar datos al SWF
-                const swf = document.getElementById('gameSWF');
-
-                if (swf.SetVariable) {
-                    // Método clásico de Flash
-                    swf.SetVariable('gameData', gameDataJSON);
-                    console.log("Datos cargados en SWF via SetVariable");
-                } else if (swf.ExternalInterface) {
-                    // Método alternativo
-                    swf.ExternalInterface.call('receiveGameData', gameDataJSON);
-                    console.log("Datos cargados en SWF via ExternalInterface");
-                } else {
-                    console.log("Datos listos para el juego:", gameDataJSON);
-                }
-            }).catch(err => console.error("Error cargando datos de Firebase:", err));
-        }
-
-        // Llamar cuando la página cargue
-        window.addEventListener('load', loadGameData);
-    </script>
-
+    <!-- Footer si tenías -->
+    <footer>
+        <p>&copy; 2025 Empire Proyect</p>
+    </footer>
 </body>
 </html>
