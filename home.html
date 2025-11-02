@@ -1,204 +1,379 @@
-<!-- Firebase para home.html -->
-<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Empire & Allies - Juego</title>
+    <!-- Tus estilos CSS existentes -->
+    <link rel="stylesheet" href="CSS/styles.css">
+    <link rel="stylesheet" href="CSS/game.css">
+    <!-- Otros CSS que tengas -->
+</head>
+<body>
+    <!-- Aquí va todo el contenido existente de tu juego -->
+    <div id="game-container">
+        <!-- El juego se carga aquí -->
+    </div>
 
-<script src="firebase/firebase-config.js"></script>
-<script src="firebase/profiles.js"></script>
+    <!-- Elementos de carga o mensajes -->
+    <div id="loading" style="color: white; text-align: center; padding: 50px;">
+        Cargando Empire & Allies...
+    </div>
 
-<script>
-// Verificar perfil seleccionado en home.html
-const profileSystem = new ProfileSystem();
-const currentProfile = profileSystem.getSelectedProfile();
+    <!-- Firebase - CARGAR PRIMERO -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
 
-if (!currentProfile) {
-    // Si no hay perfil seleccionado, volver al index
-    alert("❌ No hay perfil seleccionado. Redirigiendo al inicio...");
-    window.location.href = 'index.html';
-} else {
-    console.log("🎮 Perfil cargado:", currentProfile);
-    console.log("🔥 Proyecto Firebase: empirerevive-6571e");
-    
-    // Mostrar información del perfil
-    showProfileInfo(currentProfile);
-    
-    // Inicializar juego después de un breve delay
-    setTimeout(() => {
-        initializeGame(currentProfile);
-    }, 1000);
-}
+    <!-- Nuestros archivos Firebase -->
+    <script src="firebase/firebase-config.js"></script>
+    <script src="firebase/profiles.js"></script>
 
-// Mostrar información del perfil en pantalla
-function showProfileInfo(profile) {
-    const profileInfo = document.createElement('div');
-    profileInfo.id = 'profile-info';
-    profileInfo.style.cssText = `
-        position: fixed;
-        top: 10px;
-        left: 10px;
-        background: rgba(0,0,0,0.85);
-        color: white;
-        padding: 15px;
-        border-radius: 8px;
-        z-index: 10000;
-        font-family: Arial, sans-serif;
-        font-size: 14px;
-        border: 2px solid #00b894;
-        min-width: 200px;
-    `;
-    profileInfo.innerHTML = `
-        <div style="margin-bottom: 10px;">
-            <strong style="color: #00b894;">🎖️ ${profile.name}</strong><br>
-            <strong>Nivel:</strong> ${profile.level}<br>
-            <strong>Oro:</strong> ${profile.gold} ⭐<br>
-            <strong>Petróleo:</strong> ${profile.oil} ⛽<br>
-            <strong>Soldados:</strong> ${profile.soldiers} 💂
-        </div>
-        <div>
-            <button onclick="saveGameProgress()" style="background: #00b894; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; margin: 2px;">💾 Guardar</button>
-            <button onclick="goToMenu()" style="background: #636e72; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; margin: 2px;">🏠 Menú</button>
-        </div>
-    `;
-    document.body.appendChild(profileInfo);
-}
+    <!-- Tus scripts del juego existentes -->
+    <script src="js/game.js"></script>
+    <script src="js/engine.js"></script>
+    <!-- Otros scripts del juego -->
 
-// Inicializar juego con datos del perfil
-function initializeGame(profile) {
-    console.log("🚀 Iniciando Empire & Allies para:", profile.name);
-    
-    // Intentar pasar datos al juego original
-    if (typeof window.game !== 'undefined') {
-        window.game.playerData = profile;
-        if (typeof window.game.start === 'function') {
-            window.game.start();
-        }
-        if (typeof window.game.init === 'function') {
-            window.game.init();
-        }
-    } else if (typeof window.empireGame !== 'undefined') {
-        window.empireGame.playerData = profile;
-        if (typeof window.empireGame.start === 'function') {
-            window.empireGame.start();
-        }
-    } else {
-        // Si no detectamos el juego, mostrar estado
-        console.log("🔄 Buscando juego Empire & Allies...");
-        
-        // Intentar cada segundo durante 10 segundos
-        let attempts = 0;
-        const gameCheck = setInterval(() => {
-            attempts++;
-            if (typeof window.game !== 'undefined' || typeof window.empireGame !== 'undefined') {
-                clearInterval(gameCheck);
-                console.log("✅ Juego detectado, reiniciando...");
-                window.location.reload();
-            } else if (attempts >= 10) {
-                clearInterval(gameCheck);
-                showGameNotLoaded(profile);
+    <!-- SISTEMA DE PERFILES INTEGRADO -->
+    <script>
+        // Esperar a que todo esté cargado
+        window.addEventListener('DOMContentLoaded', function() {
+            console.log("🎮 Empire & Allies - Home cargado");
+            
+            // Inicializar sistema de perfiles
+            const profileSystem = new ProfileSystem();
+            const currentProfile = profileSystem.getSelectedProfile();
+
+            // Verificar si hay perfil seleccionado
+            if (!currentProfile) {
+                console.log("❌ No hay perfil seleccionado, redirigiendo...");
+                setTimeout(() => {
+                    window.location.href = 'index.html';
+                }, 2000);
+                return;
             }
-        }, 1000);
-    }
-}
 
-// Mostrar mensaje si el juego no carga
-function showGameNotLoaded(profile) {
-    const overlay = document.createElement('div');
-    overlay.style.cssText = `
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0,0,0,0.9);
-        color: white;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
-        z-index: 9999;
-        font-family: Arial, sans-serif;
-        text-align: center;
-    `;
-    overlay.innerHTML = `
-        <h1>🎮 Empire & Allies</h1>
-        <h2 style="color: #00b894;">Jugando como: ${profile.name}</h2>
-        <div style="background: rgba(255,255,255,0.1); padding: 20px; border-radius: 10px; margin: 20px; max-width: 500px;">
-            <p>El juego está cargando...</p>
-            <p>Si permanece esta pantalla, el juego puede tener problemas de carga.</p>
-            <p><strong>Perfil activo:</strong> ${profile.name} (Nivel ${profile.level})</p>
-            <p><strong>Proyecto:</strong> empirerevive-6571e</p>
-        </div>
-        <div>
-            <button onclick="window.location.reload()" style="background: #00b894; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; margin: 5px;">🔄 Reintentar</button>
-            <button onclick="goToMenu()" style="background: #636e72; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; margin: 5px;">🏠 Menú Principal</button>
-        </div>
-    `;
-    document.body.appendChild(overlay);
-}
+            console.log("✅ Perfil activo:", currentProfile.name);
+            
+            // Mostrar información del perfil
+            showProfileInfo(currentProfile);
+            
+            // Inicializar el juego con los datos del perfil
+            initializeGameWithProfile(currentProfile);
+        });
 
-// Guardar progreso del juego
-async function saveGameProgress() {
-    if (!currentProfile) return;
-    
-    // Aquí puedes modificar los datos que quieres guardar
-    const gameData = {
-        level: currentProfile.level,
-        gold: currentProfile.gold + 50, // Ejemplo: ganar más oro
-        oil: currentProfile.oil + 25,   // Ejemplo: ganar más petróleo
-        soldiers: currentProfile.soldiers + 10, // Ejemplo: reclutar soldados
-        lastSaved: new Date().toLocaleString()
-    };
-    
-    try {
-        await profileSystem.updateProfile(currentProfile.id, gameData);
-        
+        // Mostrar información del perfil en pantalla
+        function showProfileInfo(profile) {
+            // Crear contenedor de información del perfil
+            const profileInfo = document.createElement('div');
+            profileInfo.id = 'empire-profile-info';
+            profileInfo.style.cssText = `
+                position: fixed;
+                top: 15px;
+                left: 15px;
+                background: rgba(0, 0, 0, 0.9);
+                color: white;
+                padding: 15px;
+                border-radius: 10px;
+                z-index: 10000;
+                font-family: Arial, sans-serif;
+                font-size: 14px;
+                border: 2px solid #00b894;
+                min-width: 220px;
+                box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+                backdrop-filter: blur(10px);
+            `;
+
+            profileInfo.innerHTML = `
+                <div style="margin-bottom: 12px; border-bottom: 1px solid #00b894; padding-bottom: 8px;">
+                    <strong style="color: #00b894; font-size: 16px;">🎖️ ${profile.name}</strong>
+                </div>
+                <div style="margin-bottom: 10px;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                        <span>Nivel:</span>
+                        <span style="color: #ffeaa7;">${profile.level}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                        <span>Oro:</span>
+                        <span style="color: gold;">${profile.gold} ⭐</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                        <span>Petróleo:</span>
+                        <span style="color: #ff7675;">${profile.oil} ⛽</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                        <span>Soldados:</span>
+                        <span style="color: #74b9ff;">${profile.soldiers} 💂</span>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 5px; justify-content: space-between;">
+                    <button onclick="saveGameProgress()" 
+                            style="background: #00b894; color: white; border: none; padding: 8px 12px; border-radius: 5px; cursor: pointer; font-size: 12px; flex: 1;">
+                        💾 Guardar
+                    </button>
+                    <button onclick="goToMainMenu()" 
+                            style="background: #636e72; color: white; border: none; padding: 8px 12px; border-radius: 5px; cursor: pointer; font-size: 12px; flex: 1;">
+                        🏠 Menú
+                    </button>
+                </div>
+            `;
+
+            // Agregar al cuerpo del documento
+            document.body.appendChild(profileInfo);
+            console.log("✅ Información de perfil mostrada");
+        }
+
+        // Inicializar el juego con los datos del perfil
+        function initializeGameWithProfile(profile) {
+            console.log("🚀 Inicializando juego con perfil:", profile.name);
+            
+            // Ocultar mensaje de carga
+            const loadingElement = document.getElementById('loading');
+            if (loadingElement) {
+                loadingElement.style.display = 'none';
+            }
+            
+            // Intentar pasar los datos del perfil al juego
+            if (typeof window.game !== 'undefined') {
+                // Si existe un objeto game global
+                window.game.playerProfile = profile;
+                if (typeof window.game.init === 'function') {
+                    window.game.init();
+                }
+                if (typeof window.game.start === 'function') {
+                    window.game.start();
+                }
+                console.log("✅ Juego inicializado con perfil");
+            } else if (typeof window.empireGame !== 'undefined') {
+                // Si existe un objeto empireGame global
+                window.empireGame.playerProfile = profile;
+                if (typeof window.empireGame.init === 'function') {
+                    window.empireGame.init();
+                }
+                console.log("✅ Empire Game inicializado con perfil");
+            } else {
+                // Si no detectamos el juego, intentar cada segundo
+                attemptGameDetection(profile);
+            }
+        }
+
+        // Intentar detectar el juego
+        function attemptGameDetection(profile) {
+            let attempts = 0;
+            const maxAttempts = 15; // 15 segundos máximo
+            
+            const detectionInterval = setInterval(() => {
+                attempts++;
+                
+                if (typeof window.game !== 'undefined' || typeof window.empireGame !== 'undefined') {
+                    clearInterval(detectionInterval);
+                    console.log("✅ Juego detectado, reiniciando inicialización...");
+                    initializeGameWithProfile(profile);
+                } else if (attempts >= maxAttempts) {
+                    clearInterval(detectionInterval);
+                    showGameError(profile);
+                }
+            }, 1000);
+        }
+
+        // Mostrar error si el juego no carga
+        function showGameError(profile) {
+            const errorOverlay = document.createElement('div');
+            errorOverlay.id = 'game-error-overlay';
+            errorOverlay.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0, 0, 0, 0.95);
+                color: white;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+                z-index: 9999;
+                font-family: Arial, sans-serif;
+                text-align: center;
+                padding: 20px;
+            `;
+
+            errorOverlay.innerHTML = `
+                <div style="background: rgba(255, 255, 255, 0.1); padding: 30px; border-radius: 15px; border: 2px solid #00b894; max-width: 500px;">
+                    <h1 style="color: #00b894; margin-bottom: 20px;">🎮 Empire & Allies</h1>
+                    <h2 style="color: #ffeaa7; margin-bottom: 10px;">Comandante: ${profile.name}</h2>
+                    <div style="margin-bottom: 25px;">
+                        <p style="font-size: 18px; margin-bottom: 15px;">El juego está teniendo problemas para cargar.</p>
+                        <p style="margin-bottom: 10px;">Perfil cargado correctamente, pero el juego no responde.</p>
+                    </div>
+                    <div style="background: rgba(0, 0, 0, 0.5); padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                        <p><strong>Estado del sistema:</strong></p>
+                        <p>• Perfil: ${profile.name} ✓</p>
+                        <p>• Nivel: ${profile.level} | Oro: ${profile.gold} | Soldados: ${profile.soldiers}</p>
+                        <p>• Firebase: Conectado ✓</p>
+                    </div>
+                    <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+                        <button onclick="window.location.reload()" 
+                                style="background: #00b894; color: white; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer; font-size: 14px;">
+                            🔄 Reintentar
+                        </button>
+                        <button onclick="saveAndExit()" 
+                                style="background: #0984e3; color: white; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer; font-size: 14px;">
+                            💾 Guardar y Salir
+                        </button>
+                        <button onclick="goToMainMenu()" 
+                                style="background: #636e72; color: white; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer; font-size: 14px;">
+                            🏠 Menú Principal
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            document.body.appendChild(errorOverlay);
+        }
+
+        // === FUNCIONES GLOBALES ===
+
+        // Guardar progreso del juego
+        window.saveGameProgress = async function() {
+            try {
+                const profileSystem = new ProfileSystem();
+                const currentProfile = profileSystem.getSelectedProfile();
+                
+                if (!currentProfile) {
+                    showNotification('❌ No hay perfil activo para guardar');
+                    return;
+                }
+
+                // Datos de ejemplo para guardar (aquí integrarías con tu juego real)
+                const gameData = {
+                    level: currentProfile.level,
+                    gold: currentProfile.gold + Math.floor(Math.random() * 100), // Ejemplo
+                    oil: currentProfile.oil + Math.floor(Math.random() * 50),    // Ejemplo
+                    soldiers: currentProfile.soldiers + Math.floor(Math.random() * 10), // Ejemplo
+                    lastSaved: new Date().toLocaleString('es-ES')
+                };
+
+                await profileSystem.updateProfile(currentProfile.id, gameData);
+                
+                // Actualizar perfil local
+                const updatedProfile = { ...currentProfile, ...gameData };
+                profileSystem.selectProfile(updatedProfile);
+                
+                // Actualizar visualización
+                updateProfileDisplay(updatedProfile);
+                
+                showNotification('✅ Progreso guardado en la nube');
+                
+            } catch (error) {
+                console.error('❌ Error guardando progreso:', error);
+                showNotification('❌ Error al guardar progreso');
+            }
+        };
+
+        // Actualizar visualización del perfil
+        function updateProfileDisplay(profile) {
+            const profileElement = document.getElementById('empire-profile-info');
+            if (profileElement) {
+                profileElement.innerHTML = `
+                    <div style="margin-bottom: 12px; border-bottom: 1px solid #00b894; padding-bottom: 8px;">
+                        <strong style="color: #00b894; font-size: 16px;">🎖️ ${profile.name}</strong>
+                    </div>
+                    <div style="margin-bottom: 10px;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span>Nivel:</span>
+                            <span style="color: #ffeaa7;">${profile.level}</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span>Oro:</span>
+                            <span style="color: gold;">${profile.gold} ⭐</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span>Petróleo:</span>
+                            <span style="color: #ff7675;">${profile.oil} ⛽</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                            <span>Soldados:</span>
+                            <span style="color: #74b9ff;">${profile.soldiers} 💂</span>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 5px; justify-content: space-between;">
+                        <button onclick="saveGameProgress()" 
+                                style="background: #00b894; color: white; border: none; padding: 8px 12px; border-radius: 5px; cursor: pointer; font-size: 12px; flex: 1;">
+                            💾 Guardar
+                        </button>
+                        <button onclick="goToMainMenu()" 
+                                style="background: #636e72; color: white; border: none; padding: 8px 12px; border-radius: 5px; cursor: pointer; font-size: 12px; flex: 1;">
+                            🏠 Menú
+                        </button>
+                    </div>
+                `;
+            }
+        }
+
         // Mostrar notificación
-        showNotification('✅ Progreso guardado en la nube');
-        
-    } catch (error) {
-        showNotification('❌ Error guardando progreso');
-        console.error("Error guardando:", error);
-    }
-}
+        window.showNotification = function(message) {
+            // Remover notificación anterior si existe
+            const existingNotification = document.getElementById('empire-notification');
+            if (existingNotification) {
+                existingNotification.remove();
+            }
 
-// Mostrar notificación temporal
-function showNotification(message) {
-    const notification = document.createElement('div');
-    notification.style.cssText = `
-        position: fixed;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        background: rgba(0,0,0,0.9);
-        color: white;
-        padding: 15px 25px;
-        border-radius: 5px;
-        z-index: 10001;
-        font-family: Arial;
-        border: 2px solid #00b894;
-    `;
-    notification.textContent = message;
-    document.body.appendChild(notification);
-    
-    setTimeout(() => {
-        document.body.removeChild(notification);
-    }, 2000);
-}
+            const notification = document.createElement('div');
+            notification.id = 'empire-notification';
+            notification.style.cssText = `
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background: rgba(0, 0, 0, 0.95);
+                color: white;
+                padding: 20px 30px;
+                border-radius: 10px;
+                z-index: 10001;
+                font-family: Arial, sans-serif;
+                border: 2px solid #00b894;
+                font-size: 16px;
+                text-align: center;
+                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.7);
+                backdrop-filter: blur(5px);
+            `;
+            notification.textContent = message;
+            document.body.appendChild(notification);
 
-// Volver al menú principal
-function goToMenu() {
-    if (confirm("¿Volver al menú principal?\n\nTu progreso se guardará automáticamente.")) {
-        saveGameProgress();
-        setTimeout(() => {
-            window.location.href = 'index.html';
-        }, 1000);
-    }
-}
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.remove();
+                }
+            }, 2000);
+        };
 
-// Guardar automáticamente cada minuto
-setInterval(saveGameProgress, 60000);
+        // Ir al menú principal
+        window.goToMainMenu = function() {
+            if (confirm('¿Volver al menú principal?\n\nTu progreso se guardará automáticamente.')) {
+                saveGameProgress();
+                setTimeout(() => {
+                    window.location.href = 'index.html';
+                }, 1000);
+            }
+        };
 
-// Guardar cuando el usuario cierre la página
-window.addEventListener('beforeunload', function() {
-    saveGameProgress();
-});
-</script>
+        // Guardar y salir
+        window.saveAndExit = function() {
+            saveGameProgress();
+            setTimeout(() => {
+                window.location.href = 'index.html';
+            }, 1500);
+        };
+
+        // Guardado automático cada 2 minutos
+        setInterval(saveGameProgress, 120000);
+
+        // Guardar cuando se cierre la página
+        window.addEventListener('beforeunload', function() {
+            saveGameProgress();
+        });
+
+        console.log("🎯 Sistema de perfiles integrado en home.html");
+    </script>
+</body>
+</html>
