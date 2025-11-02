@@ -1,174 +1,445 @@
-// firebase/profiles.js - VERSIÓN MEJORADA
-class ProfileSystem {
-    constructor() {
-        this.currentProfile = null;
-        this.db = null;
-        this.initFirebase();
-    }
-
-    initFirebase() {
-        try {
-            if (typeof firebase !== 'undefined' && firebase.apps.length > 0) {
-                this.db = firebase.firestore();
-                console.log("✅ Firestore inicializado correctamente");
-            } else {
-                console.warn("⚠️ Firebase no está listo, reintentando...");
-                setTimeout(() => this.initFirebase(), 1000);
-            }
-        } catch (error) {
-            console.error("❌ Error inicializando Firestore:", error);
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Empire & Allies - Revived</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #1e3c72, #2a5298);
+            color: white;
+            margin: 0;
+            padding: 20px;
+            text-align: center;
         }
-    }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .logo {
+            font-size: 3em;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+        
+        .menu-button {
+            background: #ff6b00;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            margin: 10px;
+            font-size: 1.2em;
+            border-radius: 5px;
+            cursor: pointer;
+            width: 200px;
+            transition: all 0.3s;
+        }
+        
+        .menu-button:hover {
+            background: #ff8c00;
+            transform: scale(1.05);
+        }
+        
+        .profile-section {
+            background: rgba(255,255,255,0.1);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        
+        .profile-item {
+            background: rgba(255,255,255,0.2);
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            text-align: left;
+            border-left: 4px solid #00b894;
+        }
+        
+        .profile-button {
+            background: #00b894;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 3px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        
+        .delete-button {
+            background: #e17055;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 3px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        
+        input {
+            padding: 12px;
+            margin: 10px;
+            border: none;
+            border-radius: 5px;
+            width: 250px;
+            font-size: 1em;
+        }
+        
+        .loading {
+            color: #ffeaa7;
+            font-size: 1.2em;
+        }
+        
+        .error {
+            color: #ff7675;
+            background: rgba(255,255,255,0.1);
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        
+        .success {
+            color: #00b894;
+            background: rgba(255,255,255,0.1);
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        
+        pre {
+            background: rgba(0,0,0,0.3);
+            padding: 10px;
+            border-radius: 3px;
+            font-size: 12px;
+            text-align: left;
+            overflow-x: auto;
+        }
+        
+        a {
+            color: #00b894;
+            text-decoration: none;
+        }
+        
+        a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Pantalla Principal -->
+        <div id="main-menu">
+            <div class="logo">🎮 EMPIRE & ALLIES</div>
+            <h2>REVIVED EDITION</h2>
+            <p style="color: #ffeaa7;">Proyecto Empire Revive</p>
+            
+            <div style="margin: 30px 0;">
+                <button class="menu-button" onclick="showProfileSelection()">🎯 JUGAR</button><br>
+                <button class="menu-button" onclick="showHowToPlay()">📚 CÓMO JUGAR</button><br>
+                <button class="menu-button" onclick="showCredits()">⭐ CRÉDITOS</button>
+            </div>
+            
+            <!-- Estado de Firebase -->
+            <div id="firebase-status" class="loading" style="margin-top: 20px;">
+                🔄 Inicializando sistema...
+            </div>
+        </div>
 
-    // Verificar si Firestore está listo
-    async ensureFirestoreReady() {
-        if (!this.db) {
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            if (!this.db) {
-                throw new Error("Firestore no está disponible");
+        <!-- Selección de Perfiles -->
+        <div id="profile-selection" style="display: none;">
+            <h2>👤 SELECCIONA TU PERFIL</h2>
+            <p style="color: #dfe6e9;">Tus perfiles se guardan en la nube</p>
+            
+            <div id="profiles-list" class="profile-section">
+                <div class="loading">🔄 Cargando perfiles...</div>
+            </div>
+            
+            <div class="profile-section">
+                <h3>➕ CREAR NUEVO PERFIL</h3>
+                <input type="text" id="new-profile-name" placeholder="Nombre de tu comandante" maxlength="20">
+                <br>
+                <button class="menu-button" onclick="createNewProfile()">✨ CREAR PERFIL</button>
+            </div>
+            
+            <button class="menu-button" onclick="showMainMenu()" style="background: #636e72;">↩️ VOLVER</button>
+        </div>
+
+        <!-- Cómo Jugar -->
+        <div id="how-to-play" style="display: none;">
+            <h2>🎯 CÓMO JUGAR</h2>
+            <div style="text-align: left; background: rgba(255,255,255,0.1); padding: 20px; border-radius: 10px;">
+                <p>1. <strong>🎖️ Crea tu perfil</strong> - Elige un nombre para tu comandante</p>
+                <p>2. <strong>🏗️ Construye tu base</strong> - Edifica cuarteles, refinerías y fábricas</p>
+                <p>3. <strong>⚔️ Recluta ejército</strong> - Entrena soldados y vehículos de combate</p>
+                <p>4. <strong>🛡️ Gestiona recursos</strong> - Consigue oro, petróleo y materiales</p>
+                <p>5. <strong>🚀 Investiga tecnología</strong> - Mejora tus unidades y edificios</p>
+                <p>6. <strong>🌎 Domina el territorio</strong> - Expande tu imperio</p>
+            </div>
+            <button class="menu-button" onclick="showMainMenu()" style="background: #636e72;">↩️ VOLVER</button>
+        </div>
+
+        <!-- Créditos -->
+        <div id="credits" style="display: none;">
+            <h2>⭐ CRÉDITOS</h2>
+            <div style="text-align: left; background: rgba(255,255,255,0.1); padding: 20px; border-radius: 10px;">
+                <p><strong>🎮 Juego Original:</strong> Zynga</p>
+                <p><strong>🔄 Versión Revivida:</strong> Empire Revive Project</p>
+                <p><strong>💻 Desarrollo:</strong> Comunidad Empire & Allies</p>
+                <p><strong>⚡ Tecnología:</strong> Firebase + HTML5</p>
+                <p><strong>🌐 Base de Datos:</strong> Google Firestore</p>
+            </div>
+            <button class="menu-button" onclick="showMainMenu()" style="background: #636e72;">↩️ VOLVER</button>
+        </div>
+    </div>
+
+    <!-- Firebase - CARGAR PRIMERO -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+
+    <!-- Nuestros archivos - CARGAR DESPUÉS -->
+    <script src="firebase/firebase-config.js"></script>
+    <script src="firebase/profiles.js"></script>
+
+    <script>
+        // Variables globales
+        let profileSystem;
+        let firebaseReady = false;
+
+        // Inicializar el sistema
+        function initializeSystem() {
+            const statusElement = document.getElementById('firebase-status');
+            
+            try {
+                if (typeof firebase === 'undefined') {
+                    statusElement.innerHTML = '❌ Error: Firebase no se cargó';
+                    statusElement.className = 'error';
+                    return;
+                }
+
+                // Inicializar sistema de perfiles
+                profileSystem = new ProfileSystem();
+                
+                // Verificar si Firestore está listo después de un tiempo
+                setTimeout(() => {
+                    if (profileSystem.db) {
+                        firebaseReady = true;
+                        statusElement.innerHTML = '✅ Sistema listo - Firebase conectado';
+                        statusElement.className = 'success';
+                        console.log("✅ Todo cargado correctamente");
+                    } else {
+                        statusElement.innerHTML = '⚠️ Firebase cargando...';
+                    }
+                }, 2000);
+
+            } catch (error) {
+                statusElement.innerHTML = '❌ Error inicializando: ' + error.message;
+                statusElement.className = 'error';
+                console.error("Error:", error);
             }
         }
-    }
 
-    // Crear perfil en Firebase
-    async createProfile(profileName) {
-        try {
-            await this.ensureFirestoreReady();
-            
-            const profileData = {
-                name: profileName,
-                level: 1,
-                resources: 1000,
-                gold: 500,
-                oil: 500,
-                soldiers: 50,
-                base: {
-                    headquarters: 1,
-                    barracks: 0,
-                    refinery: 0,
-                    factory: 0
-                },
-                created: new Date().toISOString(),
-                lastPlayed: new Date().toISOString()
-            };
+        // Inicializar cuando la página cargue
+        window.addEventListener('load', initializeSystem);
 
-            const docRef = await this.db.collection('profiles').add(profileData);
-            console.log("✅ Perfil creado con ID:", docRef.id);
-            
-            const newProfile = { 
-                id: docRef.id, 
-                ...profileData 
-            };
-            
-            this.selectProfile(newProfile);
-            return newProfile;
-            
-        } catch (error) {
-            console.error("❌ Error creando perfil:", error);
-            let errorMessage = "Error creando perfil";
-            
-            if (error.code === 'permission-denied') {
-                errorMessage = "❌ Error de permisos: Configura las reglas de Firestore";
-            } else if (error.code === 'unavailable') {
-                errorMessage = "❌ Error de conexión: Verifica tu internet";
+        // Mostrar menú principal
+        function showMainMenu() {
+            hideAllSections();
+            document.getElementById('main-menu').style.display = 'block';
+        }
+
+        // Mostrar selección de perfiles
+        function showProfileSelection() {
+            if (!firebaseReady) {
+                alert('⚠️ El sistema aún se está cargando. Espera un momento...');
+                return;
             }
             
-            alert(errorMessage + "\n\nDetalles: " + error.message);
-            throw error;
+            hideAllSections();
+            document.getElementById('profile-selection').style.display = 'block';
+            loadProfilesFromFirebase();
         }
-    }
 
-    // Cargar todos los perfiles
-    async loadAllProfiles() {
-        try {
-            await this.ensureFirestoreReady();
+        // Mostrar cómo jugar
+        function showHowToPlay() {
+            hideAllSections();
+            document.getElementById('how-to-play').style.display = 'block';
+        }
+
+        // Mostrar créditos
+        function showCredits() {
+            hideAllSections();
+            document.getElementById('credits').style.display = 'block';
+        }
+
+        // Ocultar todas las secciones
+        function hideAllSections() {
+            const sections = ['main-menu', 'profile-selection', 'how-to-play', 'credits'];
+            sections.forEach(section => {
+                document.getElementById(section).style.display = 'none';
+            });
+        }
+
+        // Cargar perfiles desde Firebase
+        async function loadProfilesFromFirebase() {
+            if (!profileSystem) {
+                document.getElementById('profiles-list').innerHTML = '<div class="error">❌ Sistema no inicializado</div>';
+                return;
+            }
+
+            const profilesList = document.getElementById('profiles-list');
+            profilesList.innerHTML = '<div class="loading">🔄 Conectando con Firebase...</div>';
             
-            const snapshot = await this.db.collection('profiles').get();
-            const profiles = [];
-            
-            snapshot.forEach(doc => {
-                const data = doc.data();
-                profiles.push({ 
-                    id: doc.id, 
-                    name: data.name,
-                    level: data.level || 1,
-                    resources: data.resources || 1000,
-                    gold: data.gold || 500,
-                    oil: data.oil || 500,
-                    soldiers: data.soldiers || 50,
-                    created: data.created || new Date().toISOString()
+            try {
+                const profiles = await profileSystem.loadAllProfiles();
+                
+                if (profiles.length === 0) {
+                    profilesList.innerHTML = '<div class="loading">📝 No hay perfiles. ¡Crea el primero!</div>';
+                    return;
+                }
+                
+                profilesList.innerHTML = '<h3>📂 TUS PERFILES GUARDADOS</h3>';
+                profiles.forEach(profile => {
+                    const createdDate = profile.created ? new Date(profile.created).toLocaleDateString() : 'Reciente';
+                    
+                    const profileDiv = document.createElement('div');
+                    profileDiv.className = 'profile-item';
+                    profileDiv.innerHTML = `
+                        <h4>🎖️ ${profile.name}</h4>
+                        <p><strong>Nivel:</strong> ${profile.level} | <strong>Oro:</strong> ${profile.gold}</p>
+                        <p><strong>Petróleo:</strong> ${profile.oil} | <strong>Soldados:</strong> ${profile.soldiers}</p>
+                        <p><strong>Creado:</strong> ${createdDate}</p>
+                        <button class="profile-button" onclick="selectProfile('${profile.id}')">
+                            ▶️ JUGAR
+                        </button>
+                        <button class="delete-button" onclick="deleteProfile('${profile.id}')">
+                            🗑️ ELIMINAR
+                        </button>
+                    `;
+                    profilesList.appendChild(profileDiv);
                 });
-            });
+            } catch (error) {
+                let errorHtml = '<div class="error">❌ ' + error.message + '</div>';
+                
+                // Mostrar instrucciones específicas para errores de permisos
+                if (error.message.includes('reglas de Firestore')) {
+                    errorHtml += `
+                        <div style="background: rgba(255,255,255,0.1); padding: 15px; border-radius: 5px; margin-top: 10px; text-align: left;">
+                            <h4>📋 Para solucionar este error:</h4>
+                            <p>1. Ve a <a href="https://console.firebase.google.com" target="_blank" style="color: #00b894;">Firebase Console</a></p>
+                            <p>2. Selecciona tu proyecto <strong>empirerevive-6571e</strong></p>
+                            <p>3. Ve a <strong>Firestore Database → Reglas</strong></p>
+                            <p>4. Reemplaza todo con:</p>
+                            <pre>rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if true;
+    }
+  }
+}</pre>
+                            <p>5. Haz clic en <strong>Publicar</strong></p>
+                            <p>6. Actualiza esta página</p>
+                        </div>
+                    `;
+                }
+                
+                profilesList.innerHTML = errorHtml;
+            }
+        }
+
+        // Seleccionar perfil
+        async function selectProfile(profileId) {
+            if (!profileSystem) {
+                alert('❌ Sistema no inicializado');
+                return;
+            }
+
+            try {
+                const profile = await profileSystem.loadProfileData(profileId);
+                if (profile) {
+                    profileSystem.selectProfile(profile);
+                    alert(`🎮 ¡Bienvenido Comandante ${profile.name}! \n\nCargando Empire & Allies...`);
+                    window.location.href = 'home.html';
+                }
+            } catch (error) {
+                alert("❌ Error seleccionando perfil: " + error.message);
+            }
+        }
+
+        // Eliminar perfil
+        async function deleteProfile(profileId) {
+            if (!profileSystem) {
+                alert('❌ Sistema no inicializado');
+                return;
+            }
+
+            if (confirm('⚠️ ¿Estás seguro de que quieres eliminar este perfil?\n\nEsta acción no se puede deshacer.')) {
+                try {
+                    const success = await profileSystem.deleteProfile(profileId);
+                    if (success) {
+                        alert('✅ Perfil eliminado correctamente');
+                        loadProfilesFromFirebase();
+                    }
+                } catch (error) {
+                    alert('❌ Error eliminando perfil: ' + error.message);
+                }
+            }
+        }
+
+        // Crear nuevo perfil
+        async function createNewProfile() {
+            if (!profileSystem) {
+                alert('❌ Sistema no inicializado');
+                return;
+            }
+
+            const profileName = document.getElementById('new-profile-name').value.trim();
             
-            console.log("✅ Perfiles cargados:", profiles.length);
-            return profiles;
-        } catch (error) {
-            console.error("❌ Error cargando perfiles:", error);
-            
-            let errorMessage = "Error cargando perfiles";
-            if (error.code === 'permission-denied') {
-                errorMessage = "❌ Configura las reglas de Firestore:\n1. Ve a Firebase Console\n2. Firestore Database → Reglas\n3. Reemplaza con: allow read, write: if true;\n4. Publica las reglas";
+            if (!profileName) {
+                alert("⚠️ Por favor ingresa un nombre para tu comandante");
+                return;
             }
             
-            throw new Error(errorMessage);
-        }
-    }
-
-    // Seleccionar perfil
-    selectProfile(profile) {
-        this.currentProfile = profile;
-        localStorage.setItem('selectedProfile', JSON.stringify(profile));
-        console.log("✅ Perfil seleccionado:", profile.name);
-    }
-
-    // Obtener perfil seleccionado
-    getSelectedProfile() {
-        const saved = localStorage.getItem('selectedProfile');
-        return saved ? JSON.parse(saved) : null;
-    }
-
-    // Actualizar datos del perfil
-    async updateProfile(profileId, newData) {
-        try {
-            await this.ensureFirestoreReady();
-            
-            await this.db.collection('profiles').doc(profileId).update({
-                ...newData,
-                lastPlayed: new Date().toISOString()
-            });
-            console.log("✅ Progreso guardado:", profileId);
-        } catch (error) {
-            console.error("❌ Error guardando progreso:", error);
-        }
-    }
-
-    // Cargar datos específicos de un perfil
-    async loadProfileData(profileId) {
-        try {
-            await this.ensureFirestoreReady();
-            
-            const doc = await this.db.collection('profiles').doc(profileId).get();
-            if (doc.exists) {
-                return { id: doc.id, ...doc.data() };
+            if (profileName.length < 3) {
+                alert("⚠️ El nombre debe tener al menos 3 caracteres");
+                return;
             }
-            return null;
-        } catch (error) {
-            console.error("❌ Error cargando perfil:", error);
-            return null;
-        }
-    }
-
-    // Eliminar perfil
-    async deleteProfile(profileId) {
-        try {
-            await this.ensureFirestoreReady();
             
-            await this.db.collection('profiles').doc(profileId).delete();
-            console.log("✅ Perfil eliminado:", profileId);
-            return true;
-        } catch (error) {
-            console.error("❌ Error eliminando perfil:", error);
-            return false;
+            try {
+                const createButton = document.querySelector('#profile-selection .menu-button');
+                const originalText = createButton.innerHTML;
+                createButton.innerHTML = '🔄 CREANDO...';
+                createButton.disabled = true;
+                
+                await profileSystem.createProfile(profileName);
+                
+                createButton.innerHTML = originalText;
+                createButton.disabled = false;
+                document.getElementById('new-profile-name').value = '';
+                
+            } catch (error) {
+                const createButton = document.querySelector('#profile-selection .menu-button');
+                createButton.innerHTML = '✨ CREAR PERFIL';
+                createButton.disabled = false;
+            }
         }
-    }
-}
+
+        // Tecla Enter para crear perfil
+        document.getElementById('new-profile-name')?.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                createNewProfile();
+            }
+        });
+
+        // Mostrar información de depuración en consola
+        console.log("🎮 Empire & Allies - Revived Edition");
+        console.log("🔥 Firebase Project: empirerevive-6571e");
+        console.log("📁 Estructura cargada correctamente");
+    </script>
+</body>
+</html>
