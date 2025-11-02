@@ -1,7 +1,17 @@
-// firebase/profiles.js
+// firebase/profiles.js - VERSIÓN CORREGIDA
 class ProfileSystem {
     constructor() {
         this.currentProfile = null;
+        this.initFirebase();
+    }
+
+    initFirebase() {
+        // Esperar a que Firebase se cargue
+        if (typeof firebase === 'undefined') {
+            console.error("Firebase no está cargado");
+            return;
+        }
+        console.log("✅ Firebase listo en ProfileSystem");
     }
 
     // Crear perfil en Firebase
@@ -24,15 +34,16 @@ class ProfileSystem {
                 lastPlayed: firebase.firestore.FieldValue.serverTimestamp()
             };
 
+            const db = firebase.firestore();
             const docRef = await db.collection('profiles').add(profileData);
-            console.log("Perfil creado con ID:", docRef.id);
+            console.log("✅ Perfil creado con ID:", docRef.id);
             
             const newProfile = { id: docRef.id, ...profileData };
             this.selectProfile(newProfile);
             return newProfile;
             
         } catch (error) {
-            console.error("Error creando perfil:", error);
+            console.error("❌ Error creando perfil:", error);
             alert("Error creando perfil: " + error.message);
             throw error;
         }
@@ -41,6 +52,7 @@ class ProfileSystem {
     // Cargar todos los perfiles
     async loadAllProfiles() {
         try {
+            const db = firebase.firestore();
             const snapshot = await db.collection('profiles').get();
             const profiles = [];
             
@@ -58,9 +70,10 @@ class ProfileSystem {
                 });
             });
             
+            console.log("✅ Perfiles cargados:", profiles.length);
             return profiles;
         } catch (error) {
-            console.error("Error cargando perfiles:", error);
+            console.error("❌ Error cargando perfiles:", error);
             return [];
         }
     }
@@ -69,7 +82,7 @@ class ProfileSystem {
     selectProfile(profile) {
         this.currentProfile = profile;
         localStorage.setItem('selectedProfile', JSON.stringify(profile));
-        console.log("Perfil seleccionado:", profile.name);
+        console.log("✅ Perfil seleccionado:", profile.name);
     }
 
     // Obtener perfil seleccionado
@@ -81,26 +94,28 @@ class ProfileSystem {
     // Actualizar datos del perfil
     async updateProfile(profileId, newData) {
         try {
+            const db = firebase.firestore();
             await db.collection('profiles').doc(profileId).update({
                 ...newData,
                 lastPlayed: firebase.firestore.FieldValue.serverTimestamp()
             });
-            console.log("Progreso guardado:", profileId);
+            console.log("✅ Progreso guardado:", profileId);
         } catch (error) {
-            console.error("Error guardando progreso:", error);
+            console.error("❌ Error guardando progreso:", error);
         }
     }
 
     // Cargar datos específicos de un perfil
     async loadProfileData(profileId) {
         try {
+            const db = firebase.firestore();
             const doc = await db.collection('profiles').doc(profileId).get();
             if (doc.exists) {
                 return { id: doc.id, ...doc.data() };
             }
             return null;
         } catch (error) {
-            console.error("Error cargando perfil:", error);
+            console.error("❌ Error cargando perfil:", error);
             return null;
         }
     }
@@ -108,11 +123,12 @@ class ProfileSystem {
     // Eliminar perfil
     async deleteProfile(profileId) {
         try {
+            const db = firebase.firestore();
             await db.collection('profiles').doc(profileId).delete();
-            console.log("Perfil eliminado:", profileId);
+            console.log("✅ Perfil eliminado:", profileId);
             return true;
         } catch (error) {
-            console.error("Error eliminando perfil:", error);
+            console.error("❌ Error eliminando perfil:", error);
             return false;
         }
     }
