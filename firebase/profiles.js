@@ -1,4 +1,4 @@
-// firebase/profiles.js - VERSIÓN MEJORADA
+// firebase/profiles.js
 class ProfileSystem {
     constructor() {
         this.currentProfile = null;
