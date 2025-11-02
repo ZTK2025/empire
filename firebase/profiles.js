@@ -1,22 +1,40 @@
-// firebase/profiles.js - VERSIÓN CORREGIDA
+// firebase/profiles.js - VERSIÓN MEJORADA
 class ProfileSystem {
     constructor() {
         this.currentProfile = null;
+        this.db = null;
         this.initFirebase();
     }
 
     initFirebase() {
-        // Esperar a que Firebase se cargue
-        if (typeof firebase === 'undefined') {
-            console.error("Firebase no está cargado");
-            return;
+        try {
+            if (typeof firebase !== 'undefined' && firebase.apps.length > 0) {
+                this.db = firebase.firestore();
+                console.log("✅ Firestore inicializado correctamente");
+            } else {
+                console.warn("⚠️ Firebase no está listo, reintentando...");
+                setTimeout(() => this.initFirebase(), 1000);
+            }
+        } catch (error) {
+            console.error("❌ Error inicializando Firestore:", error);
         }
-        console.log("✅ Firebase listo en ProfileSystem");
+    }
+
+    // Verificar si Firestore está listo
+    async ensureFirestoreReady() {
+        if (!this.db) {
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            if (!this.db) {
+                throw new Error("Firestore no está disponible");
+            }
+        }
     }
 
     // Crear perfil en Firebase
     async createProfile(profileName) {
         try {
+            await this.ensureFirestoreReady();
+            
             const profileData = {
                 name: profileName,
                 level: 1,
@@ -30,21 +48,32 @@ class ProfileSystem {
                     refinery: 0,
                     factory: 0
                 },
-                created: firebase.firestore.FieldValue.serverTimestamp(),
-                lastPlayed: firebase.firestore.FieldValue.serverTimestamp()
+                created: new Date().toISOString(),
+                lastPlayed: new Date().toISOString()
             };
 
-            const db = firebase.firestore();
-            const docRef = await db.collection('profiles').add(profileData);
+            const docRef = await this.db.collection('profiles').add(profileData);
             console.log("✅ Perfil creado con ID:", docRef.id);
             
-            const newProfile = { id: docRef.id, ...profileData };
+            const newProfile = { 
+                id: docRef.id, 
+                ...profileData 
+            };
+            
             this.selectProfile(newProfile);
             return newProfile;
             
         } catch (error) {
             console.error("❌ Error creando perfil:", error);
-            alert("Error creando perfil: " + error.message);
+            let errorMessage = "Error creando perfil";
+            
+            if (error.code === 'permission-denied') {
+                errorMessage = "❌ Error de permisos: Configura las reglas de Firestore";
+            } else if (error.code === 'unavailable') {
+                errorMessage = "❌ Error de conexión: Verifica tu internet";
+            }
+            
+            alert(errorMessage + "\n\nDetalles: " + error.message);
             throw error;
         }
     }
@@ -52,8 +81,9 @@ class ProfileSystem {
     // Cargar todos los perfiles
     async loadAllProfiles() {
         try {
-            const db = firebase.firestore();
-            const snapshot = await db.collection('profiles').get();
+            await this.ensureFirestoreReady();
+            
+            const snapshot = await this.db.collection('profiles').get();
             const profiles = [];
             
             snapshot.forEach(doc => {
@@ -66,7 +96,7 @@ class ProfileSystem {
                     gold: data.gold || 500,
                     oil: data.oil || 500,
                     soldiers: data.soldiers || 50,
-                    created: data.created
+                    created: data.created || new Date().toISOString()
                 });
             });
             
@@ -74,7 +104,13 @@ class ProfileSystem {
             return profiles;
         } catch (error) {
             console.error("❌ Error cargando perfiles:", error);
-            return [];
+            
+            let errorMessage = "Error cargando perfiles";
+            if (error.code === 'permission-denied') {
+                errorMessage = "❌ Configura las reglas de Firestore:\n1. Ve a Firebase Console\n2. Firestore Database → Reglas\n3. Reemplaza con: allow read, write: if true;\n4. Publica las reglas";
+            }
+            
+            throw new Error(errorMessage);
         }
     }
 
@@ -94,10 +130,11 @@ class ProfileSystem {
     // Actualizar datos del perfil
     async updateProfile(profileId, newData) {
         try {
-            const db = firebase.firestore();
-            await db.collection('profiles').doc(profileId).update({
+            await this.ensureFirestoreReady();
+            
+            await this.db.collection('profiles').doc(profileId).update({
                 ...newData,
-                lastPlayed: firebase.firestore.FieldValue.serverTimestamp()
+                lastPlayed: new Date().toISOString()
             });
             console.log("✅ Progreso guardado:", profileId);
         } catch (error) {
@@ -108,8 +145,9 @@ class ProfileSystem {
     // Cargar datos específicos de un perfil
     async loadProfileData(profileId) {
         try {
-            const db = firebase.firestore();
-            const doc = await db.collection('profiles').doc(profileId).get();
+            await this.ensureFirestoreReady();
+            
+            const doc = await this.db.collection('profiles').doc(profileId).get();
             if (doc.exists) {
                 return { id: doc.id, ...doc.data() };
             }
@@ -123,8 +161,9 @@ class ProfileSystem {
     // Eliminar perfil
     async deleteProfile(profileId) {
         try {
-            const db = firebase.firestore();
-            await db.collection('profiles').doc(profileId).delete();
+            await this.ensureFirestoreReady();
+            
+            await this.db.collection('profiles').doc(profileId).delete();
             console.log("✅ Perfil eliminado:", profileId);
             return true;
         } catch (error) {
