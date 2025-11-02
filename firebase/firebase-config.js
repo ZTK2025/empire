@@ -1,4 +1,4 @@
-// firebase/firebase-config.js - VERSIÓN MEJORADA
+// firebase/firebase-config.js
 const firebaseConfig = {
   apiKey: "AIzaSyBOfc3XXaw_qOqy4_DaH1Se4LuoepM_n0g",
   authDomain: "empirerevive-6571e.firebaseapp.com",
