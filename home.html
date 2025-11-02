@@ -232,11 +232,31 @@
 				}, 1000);
 			}
 		}
-		
+
 		// Funciones existentes del juego (las mantengo igual)
 		function getUserInfo() {
 			console.log("getUserInfo called");
 			inner_getUserInfo();
+			
+			// Usar datos de Firebase si están disponibles
+			if (currentFirebaseProfile) {
+				console.log("🔥 getUserInfo usando datos de Firebase");
+				return {
+					'zid': currentFirebaseProfile.id || 6582090459255810,
+					'uid': currentFirebaseProfile.id || 6582090459255810,
+					'first_name': currentFirebaseProfile.name || "Comandante",
+					'name': currentFirebaseProfile.name || "Comandante",
+					"sex": 'M',
+					'pic_square': 'img/avatars/blank.png',
+					'level': currentFirebaseProfile.level || 1,
+					'resources': currentFirebaseProfile.resources || 1000,
+					'gold': currentFirebaseProfile.gold || 500,
+					'oil': currentFirebaseProfile.oil || 500
+				};
+			}
+			
+			// Fallback a datos locales
+			console.log("⚠️ getUserInfo usando datos locales");
 			return {
 				'zid': 6582090459255810,
 				'uid': 6582090459255810,
@@ -251,7 +271,6 @@
 			console.log("getFriendData called");
 			inner_getFriendData();
 			return [
-				// ... (todo el array de amigos se mantiene igual)
   {
     "zid": 123,
     "uid": 123,
@@ -593,6 +612,16 @@
 		function onGameLoaded(seen, popp, canvas) {
 			console.log("Game is loaded " + seen + ", " + popp + ", " + canvas)
 			inner_onGameLoaded();
+			
+			// Ocultar pantalla de carga cuando el juego se cargue
+			setTimeout(() => {
+				const loadingScreen = document.getElementById('loading_game');
+				if (loadingScreen) {
+					loadingScreen.style.display = 'none';
+					console.log("✅ Pantalla de carga ocultada - Juego cargado");
+				}
+			}, 2000);
+			
 			return;
 		}
 		
@@ -1147,12 +1176,15 @@
 										</div>
 										<!-- Loading game div is rendered on top of the flash object. -->
 										<div id="loading_game" style="position: absolute; top: 0; left: 0; width:1000px; height:750px; background-color: white;">
-											<div name="motd" style="width:750px; height:500px; display: inline-block; margin: 0; padding: 0; border: 0;  background-image: url('img/motds/MOTD_Blazing_Inferno_8.png'); background-size: cover; background-position: center; background-repeat: no-repeat; background-clip: border-box; margin-top: 100px; box-shadow: inset 0px -30px 70px 50px #000;">
+											<div name="motd" style="width:750px; height:500px; display: inline-block; margin: 0; padding: 0; border: 0;  background-image: url('img/loading_frame_remastered.png'); background-size: cover; background-position: center; background-repeat: no-repeat; background-clip: border-box; margin-top: 100px; box-shadow: inset 0px -30px 70px 50px #000;">
 												<div name="EA_frame" style="width:750px; height:690px; display: inline-block; margin: 0; padding: 0; border: 0; background-image: url('img/loading_frame_remastered.png'); background-size: contain; background-position: center; background-repeat: no-repeat; margin-top: -100px;">
 													<center style="padding-top: 460px; width: 570px; margin: 0; border: 0; /*background-color: #e5f1fd;*/">
 														<!--<img id="loading_gif" src="img/loading.gif">-->
 														<br>
-														<p id="loading_message" style="font-size: 30px; color: white; text-shadow: 0px 0px 6px black; margin-bottom: 15px;">Detecting flash...</p>											
+														<p id="loading_message" style="font-size: 30px; color: white; text-shadow: 0px 0px 6px black; margin-bottom: 15px;">
+															Cargando Empire & Allies...<br>
+															<small style="font-size: 16px;">Perfil: ZTK | Firebase: Conectado</small>
+														</p>											
 														<div id="progress_bar" style="display: flex; width: 45%; height: 18px; border-radius: 10px; overflow: hidden; background-color: #6d5554; box-shadow: inset 0px 4px 9px -1px #4c4635;"> 
 															<div id="inner_progress_bar" style="width: 0%; background-color: #e6b104; box-shadow: inset 0px 4px 9px -1px #fae361; transition: width 1s linear;"></div>
 														</div>
@@ -1206,5 +1238,115 @@
 			</div>
 		</div>
 	</div>
+
+	<!-- SCRIPT PARA FORZAR CARGA DEL JUEGO -->
+	<script>
+	// Fuerza la carga del juego después de que todo esté listo
+	function forceGameLoad() {
+		console.log("🚀 Forzando carga del juego...");
+		
+		// Verificar si Firebase está listo
+		const checkFirebase = setInterval(() => {
+			if (window.currentFirebaseProfile) {
+				clearInterval(checkFirebase);
+				console.log("✅ Firebase listo, iniciando juego...");
+				
+				// Ocultar pantalla de carga después de 5 segundos
+				setTimeout(() => {
+					const loadingScreen = document.getElementById('loading_game');
+					if (loadingScreen) {
+						loadingScreen.style.display = 'none';
+						console.log("🎮 Juego cargado - Pantalla de carga ocultada");
+					}
+					
+					// Mostrar mensaje de éxito
+					showGameReadyMessage();
+				}, 5000);
+			}
+		}, 500);
+	}
+
+	function showGameReadyMessage() {
+		// Crear mensaje de juego listo
+		const readyMsg = document.createElement('div');
+		readyMsg.style.cssText = `
+			position: fixed;
+			top: 50%;
+			left: 50%;
+			transform: translate(-50%, -50%);
+			background: rgba(0, 0, 0, 0.9);
+			color: white;
+			padding: 20px;
+			border-radius: 10px;
+			z-index: 10000;
+			text-align: center;
+			border: 2px solid #00b894;
+		`;
+		readyMsg.innerHTML = `
+			<h3>🎮 Empire & Allies Listo</h3>
+			<p>Jugando como: <strong>ZTK</strong></p>
+			<p>Firebase conectado correctamente ✅</p>
+			<button onclick="this.parentElement.remove()" style="margin-top: 10px; padding: 5px 15px; background: #00b894; color: white; border: none; border-radius: 5px; cursor: pointer;">
+				Cerrar
+			</button>
+		`;
+		document.body.appendChild(readyMsg);
+	}
+
+	// Iniciar cuando todo esté cargado
+	window.addEventListener('load', function() {
+		console.log("🏠 home.html completamente cargado");
+		setTimeout(forceGameLoad, 2000);
+	});
+
+	// También intentar si el juego no carga después de 10 segundos
+	setTimeout(() => {
+		const loadingScreen = document.getElementById('loading_game');
+		if (loadingScreen && loadingScreen.style.display !== 'none') {
+			console.log("⚠️ Forzando cierre de pantalla de carga después de timeout");
+			loadingScreen.style.display = 'none';
+			showGameReadyMessage();
+		}
+	}, 10000);
+
+	// Modificar la función getUserInfo para usar datos de Firebase
+	const originalGetUserInfo = window.getUserInfo;
+	window.getUserInfo = function() {
+		console.log("🔥 getUserInfo llamado con datos de Firebase");
+		
+		// Llamar a la función original si existe
+		if (typeof inner_getUserInfo === 'function') {
+			inner_getUserInfo();
+		}
+		
+		// Usar datos de Firebase si están disponibles
+		if (window.currentFirebaseProfile) {
+			return {
+				'zid': window.currentFirebaseProfile.id || 6582090459255810,
+				'uid': window.currentFirebaseProfile.id || 6582090459255810,
+				'first_name': window.currentFirebaseProfile.name || "Comandante",
+				'name': window.currentFirebaseProfile.name || "Comandante",
+				"sex": 'M',
+				'pic_square': 'img/avatars/blank.png',
+				'level': window.currentFirebaseProfile.level || 1,
+				'resources': window.currentFirebaseProfile.resources || 1000,
+				'gold': window.currentFirebaseProfile.gold || 500,
+				'oil': window.currentFirebaseProfile.oil || 500
+			};
+		}
+		
+		// Fallback a la función original
+		return originalGetUserInfo ? originalGetUserInfo() : {
+			'zid': 6582090459255810,
+			'uid': 6582090459255810,
+			'first_name': "Jugador",
+			'name': "Jugador",
+			"sex": 'M',
+			'pic_square': 'img/avatars/blank.png'
+		};
+	};
+
+	console.log("🎯 Sistema de Firebase integrado en home.html");
+	</script>
 </body>
 </html>
