@@ -101,6 +101,14 @@
             border-radius: 5px;
             margin: 10px 0;
         }
+        
+        .success {
+            color: #00b894;
+            background: rgba(255,255,255,0.1);
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
     </style>
 </head>
 <body>
@@ -115,6 +123,11 @@
                 <button class="menu-button" onclick="showProfileSelection()">🎯 JUGAR</button><br>
                 <button class="menu-button" onclick="showHowToPlay()">📚 CÓMO JUGAR</button><br>
                 <button class="menu-button" onclick="showCredits()">⭐ CRÉDITOS</button>
+            </div>
+            
+            <!-- Estado de Firebase -->
+            <div id="firebase-status" class="loading" style="margin-top: 20px;">
+                🔄 Inicializando sistema...
             </div>
         </div>
 
@@ -165,17 +178,54 @@
         </div>
     </div>
 
-    <!-- Firebase -->
+    <!-- Firebase - CARGAR PRIMERO -->
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
 
-    <!-- Nuestros archivos -->
+    <!-- Nuestros archivos - CARGAR DESPUÉS -->
     <script src="firebase/firebase-config.js"></script>
     <script src="firebase/profiles.js"></script>
 
     <script>
-        // Sistema de perfiles
-        const profileSystem = new ProfileSystem();
+        // Variables globales
+        let profileSystem;
+        let firebaseReady = false;
+
+        // Esperar a que Firebase se cargue
+        function waitForFirebase() {
+            const statusElement = document.getElementById('firebase-status');
+            
+            if (typeof firebase === 'undefined') {
+                statusElement.innerHTML = '❌ Error: Firebase no se cargó';
+                return;
+            }
+
+            if (typeof firebase.firestore === 'undefined') {
+                statusElement.innerHTML = '❌ Error: Firestore no está disponible';
+                return;
+            }
+
+            // Firebase está listo
+            firebaseReady = true;
+            statusElement.innerHTML = '✅ Sistema listo - Firebase conectado';
+            statusElement.className = 'success';
+            
+            // Inicializar sistema de perfiles
+            profileSystem = new ProfileSystem();
+            console.log("✅ Todo cargado correctamente");
+        }
+
+        // Intentar inicializar cada segundo hasta que esté listo
+        const firebaseCheck = setInterval(() => {
+            if (typeof firebase !== 'undefined' && typeof firebase.firestore !== 'undefined') {
+                clearInterval(firebaseCheck);
+                waitForFirebase();
+            }
+        }, 1000);
+
+        // También intentar al cargar la página
+        window.addEventListener('load', waitForFirebase);
 
         // Mostrar menú principal
         function showMainMenu() {
@@ -185,6 +235,11 @@
 
         // Mostrar selección de perfiles
         function showProfileSelection() {
+            if (!firebaseReady) {
+                alert('⚠️ El sistema aún se está cargando. Espera un momento...');
+                return;
+            }
+            
             hideAllSections();
             document.getElementById('profile-selection').style.display = 'block';
             loadProfilesFromFirebase();
@@ -212,6 +267,11 @@
 
         // Cargar perfiles desde Firebase
         async function loadProfilesFromFirebase() {
+            if (!profileSystem) {
+                document.getElementById('profiles-list').innerHTML = '<div class="error">❌ Sistema no inicializado</div>';
+                return;
+            }
+
             const profilesList = document.getElementById('profiles-list');
             profilesList.innerHTML = '<div class="loading">🔄 Cargando perfiles desde la nube...</div>';
             
@@ -250,6 +310,11 @@
 
         // Seleccionar perfil
         async function selectProfile(profileId) {
+            if (!profileSystem) {
+                alert('❌ Sistema no inicializado');
+                return;
+            }
+
             try {
                 const profile = await profileSystem.loadProfileData(profileId);
                 if (profile) {
@@ -264,6 +329,11 @@
 
         // Eliminar perfil
         async function deleteProfile(profileId) {
+            if (!profileSystem) {
+                alert('❌ Sistema no inicializado');
+                return;
+            }
+
             if (confirm('⚠️ ¿Estás seguro de que quieres eliminar este perfil?\n\nEsta acción no se puede deshacer.')) {
                 try {
                     const success = await profileSystem.deleteProfile(profileId);
@@ -279,6 +349,11 @@
 
         // Crear nuevo perfil
         async function createNewProfile() {
+            if (!profileSystem) {
+                alert('❌ Sistema no inicializado');
+                return;
+            }
+
             const profileName = document.getElementById('new-profile-name').value.trim();
             
             if (!profileName) {
@@ -291,21 +366,17 @@
                 return;
             }
             
-            if (profileName.length > 20) {
-                alert("⚠️ El nombre no puede tener más de 20 caracteres");
-                return;
-            }
-            
             try {
                 // Mostrar carga
                 const createButton = document.querySelector('#profile-selection .menu-button');
+                const originalText = createButton.innerHTML;
                 createButton.innerHTML = '🔄 CREANDO...';
                 createButton.disabled = true;
                 
                 await profileSystem.createProfile(profileName);
                 
                 // Restaurar botón
-                createButton.innerHTML = '✨ CREAR PERFIL';
+                createButton.innerHTML = originalText;
                 createButton.disabled = false;
                 document.getElementById('new-profile-name').value = '';
                 
@@ -316,12 +387,6 @@
                 createButton.disabled = false;
             }
         }
-
-        // Inicializar
-        window.onload = function() {
-            console.log("Empire & Allies - Revived Edition cargado");
-            console.log("Firebase Project: empirerevive-6571e");
-        };
 
         // Tecla Enter para crear perfil
         document.getElementById('new-profile-name')?.addEventListener('keypress', function(e) {
