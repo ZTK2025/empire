@@ -1,5 +1,4 @@
-// firebase/firebase-config.js - VERSIÓN CORREGIDA
-// Configuración de Firebase para Empire Revive
+// firebase/firebase-config.js - VERSIÓN MEJORADA
 const firebaseConfig = {
   apiKey: "AIzaSyBOfc3XXaw_qOqy4_DaH1Se4LuoepM_n0g",
   authDomain: "empirerevive-6571e.firebaseapp.com",
@@ -10,10 +9,13 @@ const firebaseConfig = {
 };
 
 // Inicializar Firebase
-if (!firebase.apps.length) {
+try {
+  if (typeof firebase !== 'undefined') {
     firebase.initializeApp(firebaseConfig);
-} else {
-    firebase.app(); // Si ya está inicializado, usa esa instancia
+    console.log("✅ Firebase configurado correctamente");
+  } else {
+    console.error("❌ Firebase no está disponible");
+  }
+} catch (error) {
+  console.error("❌ Error inicializando Firebase:", error);
 }
-
-console.log("✅ Firebase configurado correctamente para Empire Revive");
