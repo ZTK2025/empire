@@ -1,153 +1,141 @@
-// empires.js REPARADO - compatible con Netlify
-const zynga = {
-  ads: {
-    WatchToEarn: {
-      service: {
-        available: () => {
-          console.log("W2E avail");
-          return false;
-        },
-        initializeFlash: (oid, a, b, c) => {
-          console.log("initF", oid, a, b, c);
-          return false;
-        }
-      }
+// empires.js - INTEGRACIÓN CON FIREBASE
+console.log("🎮 Empires.js - Inicializando con Firebase...");
+
+// Sistema de Firebase para Empires
+class EmpireFirebaseIntegration {
+    constructor() {
+        this.profileSystem = null;
+        this.currentProfile = null;
+        this.initFirebase();
     }
-  }
-};
 
-const statTracker = {
-  logWorldObjectCount: () => {
-    console.log("World Count");
-  }
-};
+    initFirebase() {
+        try {
+            if (typeof ProfileSystem !== 'undefined') {
+                this.profileSystem = new ProfileSystem();
+                this.currentProfile = this.profileSystem.getSelectedProfile();
+                
+                if (this.currentProfile) {
+                    console.log("✅ Perfil de Firebase cargado para el juego:", this.currentProfile.name);
+                    this.injectProfileToGame();
+                } else {
+                    console.log("❌ No hay perfil de Firebase seleccionado");
+                }
+            } else {
+                console.log("⚠️ ProfileSystem no disponible");
+            }
+        } catch (error) {
+            console.error("❌ Error inicializando Firebase en Empires:", error);
+        }
+    }
 
-const ZYFrameManager = {
-  reloadApp: () => {
-    console.log("Reload App");
-    window.location.reload();
-  },
-  navigateTo: (a, b, c) => console.log("Navigate To", a, b, c),
-  openTab: (a, b, c) => console.log("Open Tab", a, b, c),
-  switchToTab: (a) => console.log("Switch To Tab", a)
-};
+    // Inyectar datos del perfil al juego
+    injectProfileToGame() {
+        if (!this.currentProfile) return;
 
-// ---------------- Firebase funciones SIMPLIFICADAS ----------------
-function saveUserInfo(userId, name, level = 1, coins = 100) {
-  // Guardar en localStorage como respaldo
-  const userData = { name, level, coins, timestamp: Date.now() };
-  localStorage.setItem('user_' + userId, JSON.stringify(userData));
-  console.log("Usuario guardado localmente:", userData);
+        console.log("🔄 Inyectando datos de Firebase al juego...");
+        
+        // Sobrescribir la función getUserInfo para usar datos de Firebase
+        this.overrideGetUserInfo();
+        
+        // Sobrescribir la función getFriendData si es necesario
+        this.overrideGetFriendData();
+        
+        // Simular que el juego está cargado
+        this.simulateGameLoad();
+    }
+
+    overrideGetUserInfo() {
+        // Guardar la función original
+        const originalGetUserInfo = window.getUserInfo;
+        
+        // Reemplazar con datos de Firebase
+        window.getUserInfo = function() {
+            console.log("🔥 getUserInfo llamado con datos de Firebase");
+            
+            // Llamar a la función original si existe
+            if (typeof inner_getUserInfo === 'function') {
+                inner_getUserInfo();
+            }
+            
+            // Devolver datos del perfil de Firebase
+            const profile = window.empireFirebase?.currentProfile;
+            if (profile) {
+                return {
+                    'zid': profile.id || 6582090459255810,
+                    'uid': profile.id || 6582090459255810,
+                    'first_name': profile.name || "Comandante",
+                    'name': profile.name || "Comandante",
+                    "sex": 'M',
+                    'pic_square': 'img/avatars/blank.png',
+                    'level': profile.level || 1,
+                    'resources': profile.resources || 1000,
+                    'gold': profile.gold || 500,
+                    'oil': profile.oil || 500
+                };
+            }
+            
+            // Fallback a datos locales
+            console.log("⚠️ Usando datos locales como fallback");
+            return originalGetUserInfo ? originalGetUserInfo() : {
+                'zid': 6582090459255810,
+                'uid': 6582090459255810,
+                'first_name': "Jugador",
+                'name': "Jugador",
+                "sex": 'M',
+                'pic_square': 'img/avatars/blank.png'
+            };
+        };
+        
+        console.log("✅ getUserInfo sobrescrito con datos de Firebase");
+    }
+
+    overrideGetFriendData() {
+        // Mantener la función original de amigos por ahora
+        console.log("✅ Sistema de amigos listo");
+    }
+
+    simulateGameLoad() {
+        // Simular que el juego se cargó correctamente
+        setTimeout(() => {
+            console.log("🎮 Simulando carga completa del juego...");
+            
+            // Llamar a onGameLoaded si existe
+            if (typeof onGameLoaded === 'function') {
+                onGameLoaded(true, false, document.getElementById('game_object'));
+            }
+            
+            // Ocultar pantalla de carga
+            this.hideLoadingScreen();
+            
+        }, 3000);
+    }
+
+    hideLoadingScreen() {
+        const loadingScreen = document.getElementById('loading_game');
+        if (loadingScreen) {
+            loadingScreen.style.display = 'none';
+            console.log("✅ Pantalla de carga ocultada");
+        }
+    }
+
+    // Guardar progreso en Firebase
+    async saveGameProgress(gameData) {
+        if (!this.currentProfile || !this.profileSystem) return;
+        
+        try {
+            await this.profileSystem.updateProfile(this.currentProfile.id, gameData);
+            console.log("✅ Progreso del juego guardado en Firebase");
+        } catch (error) {
+            console.error("❌ Error guardando progreso:", error);
+        }
+    }
 }
 
-function loadUserInfo(userId) {
-  const userData = localStorage.getItem('user_' + userId);
-  if (userData) {
-    console.log("Datos usuario:", JSON.parse(userData));
-    return JSON.parse(userData);
-  } else {
-    console.log("No hay datos para el usuario");
-    return null;
-  }
-}
-
-function saveFriend(userId, friendId, friendName) {
-  const friends = JSON.parse(localStorage.getItem('friends_' + userId) || '{}');
-  friends[friendId] = { name: friendName, timestamp: Date.now() };
-  localStorage.setItem('friends_' + userId, JSON.stringify(friends));
-  console.log("Amigo guardado:", friendName);
-}
-
-function loadFriends(userId) {
-  const friends = localStorage.getItem('friends_' + userId);
-  if (friends) {
-    console.log("Amigos:", JSON.parse(friends));
-    return JSON.parse(friends);
-  } else {
-    console.log("No hay amigos guardados");
-    return {};
-  }
-}
-
-// ---------------- Game functions ----------------
-function inner_getUserInfo() {
-  const loadingMessage = document.getElementById("loading_message");
-  const progressBar = document.getElementById("inner_progress_bar");
-  const flashEnabler = document.getElementById("flash_enabler");
-
-  if (loadingMessage) loadingMessage.innerHTML = "Loading User info...";
-  if (progressBar) progressBar.style.width = "30%";
-  if (flashEnabler) flashEnabler.style.display = "none";
-
-  const userId = "user_" + Math.floor(Math.random() * 10000); // ID único
-  saveUserInfo(userId, "Jugador");
-  loadUserInfo(userId);
-}
-
-function inner_getFriendData() {
-  const progressBar = document.getElementById("inner_progress_bar");
-  const loadingMessage = document.getElementById("loading_message");
-
-  if (progressBar) progressBar.style.width = "50%";
-  if (loadingMessage) loadingMessage.innerHTML = "Loading Friends data...";
-
-  const userId = "user_" + Math.floor(Math.random() * 10000);
-  
-  // Agregar algunos amigos de ejemplo
-  saveFriend(userId, "friend1", "Amigo 1");
-  saveFriend(userId, "friend2", "Amigo 2");
-  saveFriend(userId, "friend3", "Amigo 3");
-  
-  loadFriends(userId);
-}
-
-function inner_getAppFriendIds() {
-  const progressBar = document.getElementById("inner_progress_bar");
-  if (progressBar) progressBar.style.width = "70%";
-  console.log("App Friend IDs cargados");
-}
-
-function inner_onGameLoaded(seen, popp, canvas) {
-  const progressBar = document.getElementById("inner_progress_bar");
-  const loadingGame = document.getElementById("loading_game");
-  const loadingMessage = document.getElementById("loading_message");
-  
-  if (progressBar) progressBar.style.width = "100%";
-  if (loadingMessage) loadingMessage.innerHTML = "¡Juego listo!";
-  
-  // Esperar 1 segundo antes de ocultar la pantalla de carga
-  setTimeout(() => {
-    if (loadingGame) loadingGame.style.display = "none";
-    console.log("Juego completamente cargado");
-  }, 1000);
-}
-
-// Dummy functions para compatibilidad
-function openInAppPurchaseAPI(gid, snid, snuid, cid, a, b, c) {
-  console.log("Purchase", gid, snid, snuid, cid, a, b, c);
-}
-
-function hasPermission(perm, snuid, name) { 
-  console.log("Perm", perm, snuid, name);
-  return true; // Siempre permitir para testing
-}
-
-function showPermissions(d) { 
-  console.log("Show Perm", d);
-}
-
-// ---------------- Ejecutar funciones al cargar la página ----------------
-document.addEventListener("DOMContentLoaded", () => {
-  console.log("Empires.js inicializado");
-  
-  // Iniciar secuencia de carga
-  setTimeout(inner_getUserInfo, 500);
-  setTimeout(inner_getFriendData, 1500);
-  setTimeout(inner_getAppFriendIds, 2500);
+// Inicializar la integración cuando el DOM esté listo
+document.addEventListener('DOMContentLoaded', function() {
+    // Esperar a que Firebase se cargue
+    setTimeout(() => {
+        window.empireFirebase = new EmpireFirebaseIntegration();
+    }, 1000);
 });
-
-// Función global para compatibilidad
-window.inner_getUserInfo = inner_getUserInfo;
-window.inner_getFriendData = inner_getFriendData;
-window.inner_getAppFriendIds = inner_getAppFriendIds;
-window.inner_onGameLoaded = inner_onGameLoaded;
