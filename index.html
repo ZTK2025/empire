@@ -1,232 +1,174 @@
-    <script>
-        // Variables globales
-        let profileSystem;
-        let firebaseReady = false;
-
-        // Inicializar el sistema
-        function initializeSystem() {
-            const statusElement = document.getElementById('firebase-status');
-            
-            try {
-                if (typeof firebase === 'undefined') {
-                    statusElement.innerHTML = '❌ Error: Firebase no se cargó';
-                    statusElement.className = 'error';
-                    return;
-                }
-
-                // Inicializar sistema de perfiles
-                profileSystem = new ProfileSystem();
-                
-                // Verificar si Firestore está listo después de un tiempo
-                setTimeout(() => {
-                    if (profileSystem.db) {
-                        firebaseReady = true;
-                        statusElement.innerHTML = '✅ Sistema listo - Firebase conectado';
-                        statusElement.className = 'success';
-                        console.log("✅ Todo cargado correctamente");
-                    } else {
-                        statusElement.innerHTML = '⚠️ Firebase cargando...';
-                    }
-                }, 2000);
-
-            } catch (error) {
-                statusElement.innerHTML = '❌ Error inicializando: ' + error.message;
-                statusElement.className = 'error';
-                console.error("Error:", error);
-            }
-        }
-
-        // Inicializar cuando la página cargue
-        window.addEventListener('load', initializeSystem);
-
-        // Mostrar menú principal
-        function showMainMenu() {
-            hideAllSections();
-            document.getElementById('main-menu').style.display = 'block';
-        }
-
-        // Mostrar selección de perfiles
-        function showProfileSelection() {
-            if (!firebaseReady) {
-                alert('⚠️ El sistema aún se está cargando. Espera un momento...');
-                return;
-            }
-            
-            hideAllSections();
-            document.getElementById('profile-selection').style.display = 'block';
-            loadProfilesFromFirebase();
-        }
-
-        // Mostrar cómo jugar
-        function showHowToPlay() {
-            hideAllSections();
-            document.getElementById('how-to-play').style.display = 'block';
-        }
-
-        // Mostrar créditos
-        function showCredits() {
-            hideAllSections();
-            document.getElementById('credits').style.display = 'block';
-        }
-
-        // Ocultar todas las secciones
-        function hideAllSections() {
-            const sections = ['main-menu', 'profile-selection', 'how-to-play', 'credits'];
-            sections.forEach(section => {
-                document.getElementById(section).style.display = 'none';
-            });
-        }
-
-        // Cargar perfiles desde Firebase
-        async function loadProfilesFromFirebase() {
-            if (!profileSystem) {
-                document.getElementById('profiles-list').innerHTML = '<div class="error">❌ Sistema no inicializado</div>';
-                return;
-            }
-
-            const profilesList = document.getElementById('profiles-list');
-            profilesList.innerHTML = '<div class="loading">🔄 Conectando con Firebase...</div>';
-            
-            try {
-                const profiles = await profileSystem.loadAllProfiles();
-                
-                if (profiles.length === 0) {
-                    profilesList.innerHTML = '<div class="loading">📝 No hay perfiles. ¡Crea el primero!</div>';
-                    return;
-                }
-                
-                profilesList.innerHTML = '<h3>📂 TUS PERFILES GUARDADOS</h3>';
-                profiles.forEach(profile => {
-                    const createdDate = profile.created ? new Date(profile.created).toLocaleDateString() : 'Reciente';
-                    
-                    const profileDiv = document.createElement('div');
-                    profileDiv.className = 'profile-item';
-                    profileDiv.innerHTML = `
-                        <h4>🎖️ ${profile.name}</h4>
-                        <p><strong>Nivel:</strong> ${profile.level} | <strong>Oro:</strong> ${profile.gold}</p>
-                        <p><strong>Petróleo:</strong> ${profile.oil} | <strong>Soldados:</strong> ${profile.soldiers}</p>
-                        <p><strong>Creado:</strong> ${createdDate}</p>
-                        <button class="profile-button" onclick="selectProfile('${profile.id}')">
-                            ▶️ JUGAR
-                        </button>
-                        <button class="delete-button" onclick="deleteProfile('${profile.id}')">
-                            🗑️ ELIMINAR
-                        </button>
-                    `;
-                    profilesList.appendChild(profileDiv);
-                });
-            } catch (error) {
-                let errorHtml = '<div class="error">❌ ' + error.message + '</div>';
-                
-                // Mostrar instrucciones específicas para errores de permisos
-                if (error.message.includes('reglas de Firestore')) {
-                    errorHtml += `
-                        <div style="background: rgba(255,255,255,0.1); padding: 15px; border-radius: 5px; margin-top: 10px; text-align: left;">
-                            <h4>📋 Para solucionar este error:</h4>
-                            <p>1. Ve a <a href="https://console.firebase.google.com" target="_blank" style="color: #00b894;">Firebase Console</a></p>
-                            <p>2. Selecciona tu proyecto <strong>empirerevive-6571e</strong></p>
-                            <p>3. Ve a <strong>Firestore Database → Reglas</strong></p>
-                            <p>4. Reemplaza todo con:</p>
-                            <pre style="background: rgba(0,0,0,0.3); padding: 10px; border-radius: 3px; font-size: 12px;">
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    match /{document=**} {
-      allow read, write: if true;
+// firebase/profiles.js - VERSIÓN MEJORADA
+class ProfileSystem {
+    constructor() {
+        this.currentProfile = null;
+        this.db = null;
+        this.initFirebase();
     }
-  }
-}</pre>
-                            <p>5. Haz clic en <strong>Publicar</strong></p>
-                            <p>6. Actualiza esta página</p>
-                        </div>
-                    `;
-                }
-                
-                profilesList.innerHTML = errorHtml;
+
+    initFirebase() {
+        try {
+            if (typeof firebase !== 'undefined' && firebase.apps.length > 0) {
+                this.db = firebase.firestore();
+                console.log("✅ Firestore inicializado correctamente");
+            } else {
+                console.warn("⚠️ Firebase no está listo, reintentando...");
+                setTimeout(() => this.initFirebase(), 1000);
+            }
+        } catch (error) {
+            console.error("❌ Error inicializando Firestore:", error);
+        }
+    }
+
+    // Verificar si Firestore está listo
+    async ensureFirestoreReady() {
+        if (!this.db) {
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            if (!this.db) {
+                throw new Error("Firestore no está disponible");
             }
         }
+    }
 
-        // Seleccionar perfil
-        async function selectProfile(profileId) {
-            if (!profileSystem) {
-                alert('❌ Sistema no inicializado');
-                return;
-            }
-
-            try {
-                const profile = await profileSystem.loadProfileData(profileId);
-                if (profile) {
-                    profileSystem.selectProfile(profile);
-                    alert(`🎮 ¡Bienvenido Comandante ${profile.name}! \n\nCargando Empire & Allies...`);
-                    window.location.href = 'home.html';
-                }
-            } catch (error) {
-                alert("❌ Error seleccionando perfil: " + error.message);
-            }
-        }
-
-        // Eliminar perfil
-        async function deleteProfile(profileId) {
-            if (!profileSystem) {
-                alert('❌ Sistema no inicializado');
-                return;
-            }
-
-            if (confirm('⚠️ ¿Estás seguro de que quieres eliminar este perfil?\n\nEsta acción no se puede deshacer.')) {
-                try {
-                    const success = await profileSystem.deleteProfile(profileId);
-                    if (success) {
-                        alert('✅ Perfil eliminado correctamente');
-                        loadProfilesFromFirebase();
-                    }
-                } catch (error) {
-                    alert('❌ Error eliminando perfil: ' + error.message);
-                }
-            }
-        }
-
-        // Crear nuevo perfil
-        async function createNewProfile() {
-            if (!profileSystem) {
-                alert('❌ Sistema no inicializado');
-                return;
-            }
-
-            const profileName = document.getElementById('new-profile-name').value.trim();
+    // Crear perfil en Firebase
+    async createProfile(profileName) {
+        try {
+            await this.ensureFirestoreReady();
             
-            if (!profileName) {
-                alert("⚠️ Por favor ingresa un nombre para tu comandante");
-                return;
-            }
+            const profileData = {
+                name: profileName,
+                level: 1,
+                resources: 1000,
+                gold: 500,
+                oil: 500,
+                soldiers: 50,
+                base: {
+                    headquarters: 1,
+                    barracks: 0,
+                    refinery: 0,
+                    factory: 0
+                },
+                created: new Date().toISOString(),
+                lastPlayed: new Date().toISOString()
+            };
+
+            const docRef = await this.db.collection('profiles').add(profileData);
+            console.log("✅ Perfil creado con ID:", docRef.id);
             
-            if (profileName.length < 3) {
-                alert("⚠️ El nombre debe tener al menos 3 caracteres");
-                return;
+            const newProfile = { 
+                id: docRef.id, 
+                ...profileData 
+            };
+            
+            this.selectProfile(newProfile);
+            return newProfile;
+            
+        } catch (error) {
+            console.error("❌ Error creando perfil:", error);
+            let errorMessage = "Error creando perfil";
+            
+            if (error.code === 'permission-denied') {
+                errorMessage = "❌ Error de permisos: Configura las reglas de Firestore";
+            } else if (error.code === 'unavailable') {
+                errorMessage = "❌ Error de conexión: Verifica tu internet";
             }
             
-            try {
-                const createButton = document.querySelector('#profile-selection .menu-button');
-                const originalText = createButton.innerHTML;
-                createButton.innerHTML = '🔄 CREANDO...';
-                createButton.disabled = true;
-                
-                await profileSystem.createProfile(profileName);
-                
-                createButton.innerHTML = originalText;
-                createButton.disabled = false;
-                document.getElementById('new-profile-name').value = '';
-                
-            } catch (error) {
-                const createButton = document.querySelector('#profile-selection .menu-button');
-                createButton.innerHTML = '✨ CREAR PERFIL';
-                createButton.disabled = false;
-            }
+            alert(errorMessage + "\n\nDetalles: " + error.message);
+            throw error;
         }
+    }
 
-        // Tecla Enter para crear perfil
-        document.getElementById('new-profile-name')?.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                createNewProfile();
+    // Cargar todos los perfiles
+    async loadAllProfiles() {
+        try {
+            await this.ensureFirestoreReady();
+            
+            const snapshot = await this.db.collection('profiles').get();
+            const profiles = [];
+            
+            snapshot.forEach(doc => {
+                const data = doc.data();
+                profiles.push({ 
+                    id: doc.id, 
+                    name: data.name,
+                    level: data.level || 1,
+                    resources: data.resources || 1000,
+                    gold: data.gold || 500,
+                    oil: data.oil || 500,
+                    soldiers: data.soldiers || 50,
+                    created: data.created || new Date().toISOString()
+                });
+            });
+            
+            console.log("✅ Perfiles cargados:", profiles.length);
+            return profiles;
+        } catch (error) {
+            console.error("❌ Error cargando perfiles:", error);
+            
+            let errorMessage = "Error cargando perfiles";
+            if (error.code === 'permission-denied') {
+                errorMessage = "❌ Configura las reglas de Firestore:\n1. Ve a Firebase Console\n2. Firestore Database → Reglas\n3. Reemplaza con: allow read, write: if true;\n4. Publica las reglas";
             }
-        });
-    </script>
+            
+            throw new Error(errorMessage);
+        }
+    }
+
+    // Seleccionar perfil
+    selectProfile(profile) {
+        this.currentProfile = profile;
+        localStorage.setItem('selectedProfile', JSON.stringify(profile));
+        console.log("✅ Perfil seleccionado:", profile.name);
+    }
+
+    // Obtener perfil seleccionado
+    getSelectedProfile() {
+        const saved = localStorage.getItem('selectedProfile');
+        return saved ? JSON.parse(saved) : null;
+    }
+
+    // Actualizar datos del perfil
+    async updateProfile(profileId, newData) {
+        try {
+            await this.ensureFirestoreReady();
+            
+            await this.db.collection('profiles').doc(profileId).update({
+                ...newData,
+                lastPlayed: new Date().toISOString()
+            });
+            console.log("✅ Progreso guardado:", profileId);
+        } catch (error) {
+            console.error("❌ Error guardando progreso:", error);
+        }
+    }
+
+    // Cargar datos específicos de un perfil
+    async loadProfileData(profileId) {
+        try {
+            await this.ensureFirestoreReady();
+            
+            const doc = await this.db.collection('profiles').doc(profileId).get();
+            if (doc.exists) {
+                return { id: doc.id, ...doc.data() };
+            }
+            return null;
+        } catch (error) {
+            console.error("❌ Error cargando perfil:", error);
+            return null;
+        }
+    }
+
+    // Eliminar perfil
+    async deleteProfile(profileId) {
+        try {
+            await this.ensureFirestoreReady();
+            
+            await this.db.collection('profiles').doc(profileId).delete();
+            console.log("✅ Perfil eliminado:", profileId);
+            return true;
+        } catch (error) {
+            console.error("❌ Error eliminando perfil:", error);
+            return false;
+        }
+    }
+}
