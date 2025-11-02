@@ -1,379 +1,1210 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Empire & Allies - Juego</title>
-    <!-- Tus estilos CSS existentes -->
-    <link rel="stylesheet" href="CSS/styles.css">
-    <link rel="stylesheet" href="CSS/game.css">
-    <!-- Otros CSS que tengas -->
+	<!-- Meta -->
+	<meta charset="utf-8"/>
+	<!-- Title and Icon -->
+	<title id="pageTitle">Empires &amp; Allies</title>
+	<link rel="shortcut icon" href="img/icon.png"/>
+	<link rel="icon" type="image/png" href="img/icon.png"/>
+	<!-- CSS -->
+	<link rel="stylesheet" href="css/facebook.css"/>
+	<link rel="stylesheet" href="css/buttons.css"/>
+	<link rel="stylesheet" href="css/tooltiplink.css"/>
+	<link rel="stylesheet" href="css/zbar.css"/>
+	<!-- JS -->
+	<script src="//code.jquery.com/jquery-3.4.1.min.js"></script>
+	<script src="//cdnjs.cloudflare.com/ajax/libs/socket.io/2.2.0/socket.io.js" integrity="sha256-yr4fRk/GU1ehYJPAs8P4JlTgu0Hdsp4ZKrx8bDEDC3I=" crossorigin="anonymous"></script>
+	<script src="js/socketio.js"></script>
+	<script src="js/flash.js"></script>
+	<script src="js/session.js"></script>
+	<script src="js/empires.js"></script>
+	
+	<!-- Firebase Integration -->
+	<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+	<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+	<script src="firebase/firebase-config.js"></script>
+	<script src="firebase/profiles.js"></script>
+	
+	<style>
+		/* Estilos para el panel de Firebase */
+		#firebase-profile-panel {
+			position: fixed;
+			top: 80px;
+			left: 15px;
+			background: rgba(0, 0, 0, 0.9);
+			color: white;
+			padding: 15px;
+			border-radius: 10px;
+			z-index: 9999;
+			font-family: Arial, sans-serif;
+			font-size: 14px;
+			border: 2px solid #00b894;
+			min-width: 220px;
+			box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+			backdrop-filter: blur(10px);
+		}
+		
+		#firebase-profile-panel h4 {
+			color: #00b894;
+			margin: 0 0 10px 0;
+			border-bottom: 1px solid #00b894;
+			padding-bottom: 8px;
+			font-size: 16px;
+		}
+		
+		.firebase-stats {
+			margin-bottom: 10px;
+		}
+		
+		.firebase-stat-row {
+			display: flex;
+			justify-content: space-between;
+			margin-bottom: 4px;
+		}
+		
+		.firebase-buttons {
+			display: flex;
+			gap: 5px;
+			justify-content: space-between;
+		}
+		
+		.firebase-btn {
+			background: #00b894;
+			color: white;
+			border: none;
+			padding: 8px 12px;
+			border-radius: 5px;
+			cursor: pointer;
+			font-size: 12px;
+			flex: 1;
+		}
+		
+		.firebase-btn-menu {
+			background: #636e72;
+		}
+		
+		.firebase-notification {
+			position: fixed;
+			top: 50%;
+			left: 50%;
+			transform: translate(-50%, -50%);
+			background: rgba(0, 0, 0, 0.95);
+			color: white;
+			padding: 20px 30px;
+			border-radius: 10px;
+			z-index: 10001;
+			font-family: Arial, sans-serif;
+			border: 2px solid #00b894;
+			font-size: 16px;
+			text-align: center;
+			box-shadow: 0 4px 20px rgba(0, 0, 0, 0.7);
+		}
+	</style>
+	
+	<script>
+		// Firebase Integration
+		let currentFirebaseProfile = null;
+		let profileSystem = null;
+		
+		function initializeFirebase() {
+			try {
+				profileSystem = new ProfileSystem();
+				const profile = profileSystem.getSelectedProfile();
+				
+				if (!profile) {
+					console.log("❌ No Firebase profile found, redirecting to index...");
+					setTimeout(() => {
+						window.location.href = 'index.html';
+					}, 3000);
+					return;
+				}
+				
+				currentFirebaseProfile = profile;
+				console.log("✅ Firebase profile loaded:", profile.name);
+				showFirebaseProfilePanel(profile);
+				
+				// Guardar automáticamente cada 2 minutos
+				setInterval(saveGameProgress, 120000);
+				
+			} catch (error) {
+				console.error("❌ Error initializing Firebase:", error);
+			}
+		}
+		
+		function showFirebaseProfilePanel(profile) {
+			// Remover panel existente si hay
+			const existingPanel = document.getElementById('firebase-profile-panel');
+			if (existingPanel) {
+				existingPanel.remove();
+			}
+			
+			const panel = document.createElement('div');
+			panel.id = 'firebase-profile-panel';
+			panel.innerHTML = `
+				<h4>🎖️ ${profile.name}</h4>
+				<div class="firebase-stats">
+					<div class="firebase-stat-row">
+						<span>Nivel:</span>
+						<span style="color: #ffeaa7;">${profile.level || 1}</span>
+					</div>
+					<div class="firebase-stat-row">
+						<span>Oro:</span>
+						<span style="color: gold;">${profile.gold || 500} ⭐</span>
+					</div>
+					<div class="firebase-stat-row">
+						<span>Petróleo:</span>
+						<span style="color: #ff7675;">${profile.oil || 500} ⛽</span>
+					</div>
+					<div class="firebase-stat-row">
+						<span>Soldados:</span>
+						<span style="color: #74b9ff;">${profile.soldiers || 50} 💂</span>
+					</div>
+				</div>
+				<div class="firebase-buttons">
+					<button class="firebase-btn" onclick="saveGameProgress()">💾 Guardar</button>
+					<button class="firebase-btn firebase-btn-menu" onclick="goToMainMenu()">🏠 Menú</button>
+				</div>
+			`;
+			
+			document.body.appendChild(panel);
+		}
+		
+		async function saveGameProgress() {
+			if (!currentFirebaseProfile || !profileSystem) {
+				showNotification('❌ No hay perfil activo');
+				return;
+			}
+			
+			try {
+				// Aquí puedes integrar con los datos reales del juego
+				// Por ahora usamos datos de ejemplo
+				const gameData = {
+					level: currentFirebaseProfile.level || 1,
+					gold: (currentFirebaseProfile.gold || 500) + Math.floor(Math.random() * 50),
+					oil: (currentFirebaseProfile.oil || 500) + Math.floor(Math.random() * 25),
+					soldiers: (currentFirebaseProfile.soldiers || 50) + Math.floor(Math.random() * 5),
+					lastSaved: new Date().toLocaleString('es-ES')
+				};
+				
+				await profileSystem.updateProfile(currentFirebaseProfile.id, gameData);
+				
+				// Actualizar perfil local
+				const updatedProfile = { ...currentFirebaseProfile, ...gameData };
+				profileSystem.selectProfile(updatedProfile);
+				currentFirebaseProfile = updatedProfile;
+				
+				// Actualizar panel
+				showFirebaseProfilePanel(updatedProfile);
+				
+				showNotification('✅ Progreso guardado en Firebase');
+				
+			} catch (error) {
+				console.error('❌ Error saving progress:', error);
+				showNotification('❌ Error al guardar progreso');
+			}
+		}
+		
+		function showNotification(message) {
+			// Remover notificación anterior
+			const existingNotification = document.querySelector('.firebase-notification');
+			if (existingNotification) {
+				existingNotification.remove();
+			}
+			
+			const notification = document.createElement('div');
+			notification.className = 'firebase-notification';
+			notification.textContent = message;
+			document.body.appendChild(notification);
+			
+			setTimeout(() => {
+				if (notification.parentNode) {
+					notification.remove();
+				}
+			}, 2000);
+		}
+		
+		function goToMainMenu() {
+			if (confirm('¿Volver al menú principal?\n\nTu progreso se guardará automáticamente.')) {
+				saveGameProgress();
+				setTimeout(() => {
+					window.location.href = 'index.html';
+				}, 1000);
+			}
+		}
+		
+		// Funciones existentes del juego (las mantengo igual)
+		function getUserInfo() {
+			console.log("getUserInfo called");
+			inner_getUserInfo();
+			return {
+				'zid': 6582090459255810,
+				'uid': 6582090459255810,
+				'first_name': "Emperor",
+				'name': "Emperor",
+				"sex": 'F',
+				'pic_square': 'img/avatars/blank.png'
+			};
+		}
+
+		function getFriendData() {
+			console.log("getFriendData called");
+			inner_getFriendData();
+			return [
+				// ... (todo el array de amigos se mantiene igual)
+  {
+    "zid": 123,
+    "uid": 123,
+    "first_name": "Natalie",
+    "name": "Natalie Portman",
+    "sex": "F",
+    "portrait": "assets/game/GeneralAssetGroup_UI.swf/TheVille_50.png",
+    "pic": "assets/game/GeneralAssetGroup_UI.swf/TheVille_50.png",
+    "pic_square": "assets/game/GeneralAssetGroup_UI.swf/TheVille_50.png"
+  },
+  {
+    "zid": -1,
+    "uid": -1,
+    "first_name": "Steele",
+    "name": "Steele",
+    "portrait": "assets/game/GeneralAssetGroup_UI.swf/NeighborOneCP.png",
+    "pic": "assets/game/GeneralAssetGroup_UI.swf/NeighborOneCP.png",
+    "pic_square": "assets/game/GeneralAssetGroup_UI.swf/NeighborOneCP.png"
+  },
+  {
+    "zid": 131,
+    "uid": 131,
+    "first_name": "The Devs",
+    "name": "John Doe",
+    "sex": "M",
+    "portrait": "assets/game/GeneralAssetGroup_UI.swf/BubbleSafari_50.png",
+    "pic": "assets/game/GeneralAssetGroup_UI.swf/BubbleSafari_50.png",
+    "pic_square": "assets/game/GeneralAssetGroup_UI.swf/BubbleSafari_50.png"
+  },
+  {
+    "zid": 111,
+    "uid": 111,
+    "first_name": "AcidCaos",
+    "name": "AcidCaos",
+    "sex": "M",
+    "portrait": "assets/game/GeneralAssetGroup_UI.swf/CV_Duke_50.png",
+    "pic": "assets/game/GeneralAssetGroup_UI.swf/CV_Duke50.png",
+    "pic_square": "assets/game/GeneralAssetGroup_UI.swf/CV_Duke_50.png"
+  },
+  {
+    "zid": 206519343737049,
+    "uid": 206519343737049,
+    "first_name": "Survival template",
+    "name": "Survival template",
+    "sex": "F",
+    "portrait": "img/avatars/11_ArmyCP_03_100.png",
+    "pic": "img/avatars/11_ArmyCP_03_100.png",
+    "pic_square": "img/avatars/11_ArmyCP_03_100.png"
+  },
+  {
+    "zid": 5126913838830867,
+    "uid": 5126913838830867,
+    "first_name": "Imperio de Ivan",
+    "name": "Imperio de Ivan",
+    "sex": "F",
+    "portrait": "img/avatars/blank.png",
+    "pic": "img/avatars/blank.png",
+    "pic_square": "img/avatars/blank.png"
+  },
+  {
+    "zid": 8474424559020,
+    "uid": 8474424559020,
+    "first_name": "SCARLETH",
+    "name": "SCARLETH",
+    "sex": "F",
+    "portrait": "img/avatars/blank.png",
+    "pic": "img/avatars/blank.png",
+    "pic_square": "img/avatars/blank.png"
+  },
+  {
+    "zid": 5594794282553674,
+    "uid": 5594794282553674,
+    "first_name": "ARAGON III",
+    "name": "ARAGON III",
+    "sex": "F",
+    "portrait": "img/avatars/blank.png",
+    "pic": "img/avatars/blank.png",
+    "pic_square": "img/avatars/blank.png"
+  },
+  {
+    "zid": 2033806014286078,
+    "uid": 2033806014286078,
+    "first_name": "Rising Empire",
+    "name": "Rising Empire",
+    "sex": "F",
+    "portrait": "img/avatars/blank.png",
+    "pic": "img/avatars/blank.png",
+    "pic_square": "img/avatars/blank.png"
+  },
+  {
+    "zid": 6864387766150988,
+    "uid": 6864387766150988,
+    "first_name": "Mhrdhan",
+    "name": "Mhrdhan",
+    "sex": "F",
+    "portrait": "img/avatars/2_PincusCP_100.png",
+    "pic": "img/avatars/2_PincusCP_100.png",
+    "pic_square": "img/avatars/2_PincusCP_100.png"
+  },
+  {
+    "zid": 5758644816245296,
+    "uid": 5758644816245296,
+    "first_name": "Rising Empire",
+    "name": "Rising Empire",
+    "sex": "F",
+    "portrait": "img/avatars/blank.png",
+    "pic": "img/avatars/blank.png",
+    "pic_square": "img/avatars/blank.png"
+  },
+  {
+    "zid": 6306463940594535,
+    "uid": 6306463940594535,
+    "first_name": "Rising Empire",
+    "name": "Rising Empire",
+    "sex": "F",
+    "portrait": "img/avatars/2_PincusCP_100.png",
+    "pic": "img/avatars/2_PincusCP_100.png",
+    "pic_square": "img/avatars/2_PincusCP_100.png"
+  },
+  {
+    "zid": 1899895316480473,
+    "uid": 1899895316480473,
+    "first_name": "Rising Empire",
+    "name": "Rising Empire",
+    "sex": "F",
+    "portrait": "img/avatars/blank.png",
+    "pic": "img/avatars/blank.png",
+    "pic_square": "img/avatars/blank.png"
+  },
+  {
+    "zid": 1273553689443538,
+    "uid": 1273553689443538,
+    "first_name": "L1BERATO2000",
+    "name": "L1BERATO2000",
+    "sex": "F",
+    "portrait": "img/avatars/2_PincusCP_100.png",
+    "pic": "img/avatars/2_PincusCP_100.png",
+    "pic_square": "img/avatars/2_PincusCP_100.png"
+  },
+  {
+    "zid": 1869893998800317,
+    "uid": 1869893998800317,
+    "first_name": "Rising Empire",
+    "name": "Rising Empire",
+    "sex": "F",
+    "portrait": "img/avatars/blank.png",
+    "pic": "img/avatars/blank.png",
+    "pic_square": "img/avatars/blank.png"
+  },
+  {
+    "zid": 2688684757694552,
+    "uid": 2688684757694552,
+    "first_name": "Rising Empire",
+    "name": "Rising Empire",
+    "sex": "F",
+    "portrait": "img/avatars/blank.png",
+    "pic": "img/avatars/blank.png",
+    "pic_square": "img/avatars/blank.png"
+  },
+  {
+    "zid": 6459829265934663,
+    "uid": 6459829265934663,
+    "first_name": "Rising Empire",
+    "name": "Rising Empire",
+    "sex": "F",
+    "portrait": "img/avatars/blank.png",
+    "pic": "img/avatars/blank.png",
+    "pic_square": "img/avatars/blank.png"
+  },
+  {
+    "zid": 2241634855795426,
+    "uid": 2241634855795426,
+    "first_name": "Rising Empire",
+    "name": "Rising Empire",
+    "sex": "F",
+    "portrait": "img/avatars/blank.png",
+    "pic": "img/avatars/blank.png",
+    "pic_square": "img/avatars/blank.png"
+  },
+  {
+    "zid": 6676274708791065,
+    "uid": 6676274708791065,
+    "first_name": "Emalb's Empire",
+    "name": "Emalb's Empire",
+    "sex": "F",
+    "portrait": "img/avatars/11_ArmyCP_03_100.png",
+    "pic": "img/avatars/11_ArmyCP_03_100.png",
+    "pic_square": "img/avatars/11_ArmyCP_03_100.png"
+  },
+  {
+    "zid": 1087137685964718,
+    "uid": 1087137685964718,
+    "first_name": "Rising Empire",
+    "name": "Rising Empire",
+    "sex": "F",
+    "portrait": "img/avatars/blank.png",
+    "pic": "img/avatars/blank.png",
+    "pic_square": "img/avatars/blank.png"
+  },
+  {
+    "zid": 1147126223844609,
+    "uid": 1147126223844609,
+    "first_name": "Mike´s empire",
+    "name": "Mike´s empire",
+    "sex": "F",
+    "portrait": "img/avatars/blank.png",
+    "pic": "img/avatars/blank.png",
+    "pic_square": "img/avatars/blank.png"
+  },
+  {
+    "zid": 4490071325789616,
+    "uid": 4490071325789616,
+    "first_name": "Altonic Empire",
+    "name": "Altonic Empire",
+    "sex": "F",
+    "portrait": "img/avatars/blank.png",
+    "pic": "img/avatars/blank.png",
+    "pic_square": "img/avatars/blank.png"
+  },
+  {
+    "zid": 2901583569647420,
+    "uid": 2901583569647420,
+    "first_name": "Rising Empire",
+    "name": "Rising Empire",
+    "sex": "F",
+    "portrait": "img/avatars/blank.png",
+    "pic": "img/avatars/blank.png",
+    "pic_square": "img/avatars/blank.png"
+  },
+  {
+    "zid": 7577695046115190,
+    "uid": 7577695046115190,
+    "first_name": "Zee Island ",
+    "name": "Zee Island ",
+    "sex": "F",
+    "portrait": "img/avatars/4_NavyCP_04_100.png",
+    "pic": "img/avatars/4_NavyCP_04_100.png",
+    "pic_square": "img/avatars/4_NavyCP_04_100.png"
+  },
+  {
+    "zid": 2669256422400034,
+    "uid": 2669256422400034,
+    "first_name": "Darwin_Alex",
+    "name": "Darwin_Alex",
+    "sex": "F",
+    "portrait": "img/avatars/blank.png",
+    "pic": "img/avatars/blank.png",
+    "pic_square": "img/avatars/blank.png"
+  },
+  {
+    "zid": 7787995699538893,
+    "uid": 7787995699538893,
+    "first_name": "Rising Empire",
+    "name": "Rising Empire",
+    "sex": "F",
+    "portrait": "img/avatars/blank.png",
+    "pic": "img/avatars/blank.png",
+    "pic_square": "img/avatars/blank.png"
+  },
+  {
+    "zid": 358316243930353,
+    "uid": 358316243930353,
+    "first_name": "juanpfm26",
+    "name": "juanpfm26",
+    "sex": "F",
+    "portrait": "img/avatars/8_HansCP_100.png",
+    "pic": "img/avatars/8_HansCP_100.png",
+    "pic_square": "img/avatars/8_HansCP_100.png"
+  },
+  {
+    "zid": 7925281011499958,
+    "uid": 7925281011499958,
+    "first_name": "Brunetta 11",
+    "name": "Brunetta 11",
+    "sex": "F",
+    "portrait": "img/avatars/blank.png",
+    "pic": "img/avatars/blank.png",
+    "pic_square": "img/avatars/blank.png"
+  },
+  {
+    "zid": 1477319852134490,
+    "uid": 1477319852134490,
+    "first_name": "Rising Empire",
+    "name": "Rising Empire",
+    "sex": "F",
+    "portrait": "img/avatars/blank.png",
+    "pic": "img/avatars/blank.png",
+    "pic_square": "img/avatars/blank.png"
+  },
+  {
+    "zid": 1682830940355720,
+    "uid": 1682830940355720,
+    "first_name": "Rising Empire",
+    "name": "Rising Empire",
+    "sex": "F",
+    "portrait": "img/avatars/blank.png",
+    "pic": "img/avatars/blank.png",
+    "pic_square": "img/avatars/blank.png"
+  },
+  {
+    "zid": 8219559417489753,
+    "uid": 8219559417489753,
+    "first_name": "Allex",
+    "name": "Allex",
+    "sex": "F",
+    "portrait": "img/avatars/8_HansCP_100.png",
+    "pic": "img/avatars/8_HansCP_100.png",
+    "pic_square": "img/avatars/8_HansCP_100.png"
+  },
+  {
+    "zid": 1067768423967567,
+    "uid": 1067768423967567,
+    "first_name": "Rising Empire",
+    "name": "Rising Empire",
+    "sex": "F",
+    "portrait": "img/avatars/blank.png",
+    "pic": "img/avatars/blank.png",
+    "pic_square": "img/avatars/blank.png"
+  },
+  {
+    "zid": 2736276029917970,
+    "uid": 2736276029917970,
+    "first_name": "Elie's Empire",
+    "name": "Elie's Empire",
+    "sex": "F",
+    "portrait": "img/avatars/blank.png",
+    "pic": "img/avatars/blank.png",
+    "pic_square": "img/avatars/blank.png"
+  }
+];
+		}
+
+		function getAppFriendIds() {
+			console.log("getAppFriendIds called");
+			inner_getAppFriendIds();
+			return [123, 124, 131, 111, 206519343737049, 5126913838830867, 8474424559020, 5594794282553674, 2033806014286078, 6864387766150988, 5758644816245296, 6306463940594535, 1899895316480473, 1273553689443538, 1869893998800317, 2688684757694552, 6459829265934663, 2241634855795426, 6676274708791065, 1087137685964718, 1147126223844609, 4490071325789616, 2901583569647420, 7577695046115190, 2669256422400034, 7787995699538893, 358316243930353, 7925281011499958, 1477319852134490, 1682830940355720, 8219559417489753, 1067768423967567, 2736276029917970];
+		}
+
+		function onGameLoaded(seen, popp, canvas) {
+			console.log("Game is loaded " + seen + ", " + popp + ", " + canvas)
+			inner_onGameLoaded();
+			return;
+		}
+		
+		// Inicializar Firebase cuando la página cargue
+		window.addEventListener('DOMContentLoaded', function() {
+			setTimeout(initializeFirebase, 1000);
+		});
+	</script>
 </head>
-<body>
-    <!-- Aquí va todo el contenido existente de tu juego -->
-    <div id="game-container">
-        <!-- El juego se carga aquí -->
-    </div>
-
-    <!-- Elementos de carga o mensajes -->
-    <div id="loading" style="color: white; text-align: center; padding: 50px;">
-        Cargando Empire & Allies...
-    </div>
-
-    <!-- Firebase - CARGAR PRIMERO -->
-    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
-
-    <!-- Nuestros archivos Firebase -->
-    <script src="firebase/firebase-config.js"></script>
-    <script src="firebase/profiles.js"></script>
-
-    <!-- Tus scripts del juego existentes -->
-    <script src="js/game.js"></script>
-    <script src="js/engine.js"></script>
-    <!-- Otros scripts del juego -->
-
-    <!-- SISTEMA DE PERFILES INTEGRADO -->
-    <script>
-        // Esperar a que todo esté cargado
-        window.addEventListener('DOMContentLoaded', function() {
-            console.log("🎮 Empire & Allies - Home cargado");
-            
-            // Inicializar sistema de perfiles
-            const profileSystem = new ProfileSystem();
-            const currentProfile = profileSystem.getSelectedProfile();
-
-            // Verificar si hay perfil seleccionado
-            if (!currentProfile) {
-                console.log("❌ No hay perfil seleccionado, redirigiendo...");
-                setTimeout(() => {
-                    window.location.href = 'index.html';
-                }, 2000);
-                return;
-            }
-
-            console.log("✅ Perfil activo:", currentProfile.name);
-            
-            // Mostrar información del perfil
-            showProfileInfo(currentProfile);
-            
-            // Inicializar el juego con los datos del perfil
-            initializeGameWithProfile(currentProfile);
-        });
-
-        // Mostrar información del perfil en pantalla
-        function showProfileInfo(profile) {
-            // Crear contenedor de información del perfil
-            const profileInfo = document.createElement('div');
-            profileInfo.id = 'empire-profile-info';
-            profileInfo.style.cssText = `
-                position: fixed;
-                top: 15px;
-                left: 15px;
-                background: rgba(0, 0, 0, 0.9);
-                color: white;
-                padding: 15px;
-                border-radius: 10px;
-                z-index: 10000;
-                font-family: Arial, sans-serif;
-                font-size: 14px;
-                border: 2px solid #00b894;
-                min-width: 220px;
-                box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
-                backdrop-filter: blur(10px);
-            `;
-
-            profileInfo.innerHTML = `
-                <div style="margin-bottom: 12px; border-bottom: 1px solid #00b894; padding-bottom: 8px;">
-                    <strong style="color: #00b894; font-size: 16px;">🎖️ ${profile.name}</strong>
-                </div>
-                <div style="margin-bottom: 10px;">
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-                        <span>Nivel:</span>
-                        <span style="color: #ffeaa7;">${profile.level}</span>
-                    </div>
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-                        <span>Oro:</span>
-                        <span style="color: gold;">${profile.gold} ⭐</span>
-                    </div>
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-                        <span>Petróleo:</span>
-                        <span style="color: #ff7675;">${profile.oil} ⛽</span>
-                    </div>
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                        <span>Soldados:</span>
-                        <span style="color: #74b9ff;">${profile.soldiers} 💂</span>
-                    </div>
-                </div>
-                <div style="display: flex; gap: 5px; justify-content: space-between;">
-                    <button onclick="saveGameProgress()" 
-                            style="background: #00b894; color: white; border: none; padding: 8px 12px; border-radius: 5px; cursor: pointer; font-size: 12px; flex: 1;">
-                        💾 Guardar
-                    </button>
-                    <button onclick="goToMainMenu()" 
-                            style="background: #636e72; color: white; border: none; padding: 8px 12px; border-radius: 5px; cursor: pointer; font-size: 12px; flex: 1;">
-                        🏠 Menú
-                    </button>
-                </div>
-            `;
-
-            // Agregar al cuerpo del documento
-            document.body.appendChild(profileInfo);
-            console.log("✅ Información de perfil mostrada");
-        }
-
-        // Inicializar el juego con los datos del perfil
-        function initializeGameWithProfile(profile) {
-            console.log("🚀 Inicializando juego con perfil:", profile.name);
-            
-            // Ocultar mensaje de carga
-            const loadingElement = document.getElementById('loading');
-            if (loadingElement) {
-                loadingElement.style.display = 'none';
-            }
-            
-            // Intentar pasar los datos del perfil al juego
-            if (typeof window.game !== 'undefined') {
-                // Si existe un objeto game global
-                window.game.playerProfile = profile;
-                if (typeof window.game.init === 'function') {
-                    window.game.init();
-                }
-                if (typeof window.game.start === 'function') {
-                    window.game.start();
-                }
-                console.log("✅ Juego inicializado con perfil");
-            } else if (typeof window.empireGame !== 'undefined') {
-                // Si existe un objeto empireGame global
-                window.empireGame.playerProfile = profile;
-                if (typeof window.empireGame.init === 'function') {
-                    window.empireGame.init();
-                }
-                console.log("✅ Empire Game inicializado con perfil");
-            } else {
-                // Si no detectamos el juego, intentar cada segundo
-                attemptGameDetection(profile);
-            }
-        }
-
-        // Intentar detectar el juego
-        function attemptGameDetection(profile) {
-            let attempts = 0;
-            const maxAttempts = 15; // 15 segundos máximo
-            
-            const detectionInterval = setInterval(() => {
-                attempts++;
-                
-                if (typeof window.game !== 'undefined' || typeof window.empireGame !== 'undefined') {
-                    clearInterval(detectionInterval);
-                    console.log("✅ Juego detectado, reiniciando inicialización...");
-                    initializeGameWithProfile(profile);
-                } else if (attempts >= maxAttempts) {
-                    clearInterval(detectionInterval);
-                    showGameError(profile);
-                }
-            }, 1000);
-        }
-
-        // Mostrar error si el juego no carga
-        function showGameError(profile) {
-            const errorOverlay = document.createElement('div');
-            errorOverlay.id = 'game-error-overlay';
-            errorOverlay.style.cssText = `
-                position: fixed;
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 100%;
-                background: rgba(0, 0, 0, 0.95);
-                color: white;
-                display: flex;
-                flex-direction: column;
-                justify-content: center;
-                align-items: center;
-                z-index: 9999;
-                font-family: Arial, sans-serif;
-                text-align: center;
-                padding: 20px;
-            `;
-
-            errorOverlay.innerHTML = `
-                <div style="background: rgba(255, 255, 255, 0.1); padding: 30px; border-radius: 15px; border: 2px solid #00b894; max-width: 500px;">
-                    <h1 style="color: #00b894; margin-bottom: 20px;">🎮 Empire & Allies</h1>
-                    <h2 style="color: #ffeaa7; margin-bottom: 10px;">Comandante: ${profile.name}</h2>
-                    <div style="margin-bottom: 25px;">
-                        <p style="font-size: 18px; margin-bottom: 15px;">El juego está teniendo problemas para cargar.</p>
-                        <p style="margin-bottom: 10px;">Perfil cargado correctamente, pero el juego no responde.</p>
-                    </div>
-                    <div style="background: rgba(0, 0, 0, 0.5); padding: 15px; border-radius: 8px; margin-bottom: 20px;">
-                        <p><strong>Estado del sistema:</strong></p>
-                        <p>• Perfil: ${profile.name} ✓</p>
-                        <p>• Nivel: ${profile.level} | Oro: ${profile.gold} | Soldados: ${profile.soldiers}</p>
-                        <p>• Firebase: Conectado ✓</p>
-                    </div>
-                    <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
-                        <button onclick="window.location.reload()" 
-                                style="background: #00b894; color: white; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer; font-size: 14px;">
-                            🔄 Reintentar
-                        </button>
-                        <button onclick="saveAndExit()" 
-                                style="background: #0984e3; color: white; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer; font-size: 14px;">
-                            💾 Guardar y Salir
-                        </button>
-                        <button onclick="goToMainMenu()" 
-                                style="background: #636e72; color: white; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer; font-size: 14px;">
-                            🏠 Menú Principal
-                        </button>
-                    </div>
-                </div>
-            `;
-
-            document.body.appendChild(errorOverlay);
-        }
-
-        // === FUNCIONES GLOBALES ===
-
-        // Guardar progreso del juego
-        window.saveGameProgress = async function() {
-            try {
-                const profileSystem = new ProfileSystem();
-                const currentProfile = profileSystem.getSelectedProfile();
-                
-                if (!currentProfile) {
-                    showNotification('❌ No hay perfil activo para guardar');
-                    return;
-                }
-
-                // Datos de ejemplo para guardar (aquí integrarías con tu juego real)
-                const gameData = {
-                    level: currentProfile.level,
-                    gold: currentProfile.gold + Math.floor(Math.random() * 100), // Ejemplo
-                    oil: currentProfile.oil + Math.floor(Math.random() * 50),    // Ejemplo
-                    soldiers: currentProfile.soldiers + Math.floor(Math.random() * 10), // Ejemplo
-                    lastSaved: new Date().toLocaleString('es-ES')
-                };
-
-                await profileSystem.updateProfile(currentProfile.id, gameData);
-                
-                // Actualizar perfil local
-                const updatedProfile = { ...currentProfile, ...gameData };
-                profileSystem.selectProfile(updatedProfile);
-                
-                // Actualizar visualización
-                updateProfileDisplay(updatedProfile);
-                
-                showNotification('✅ Progreso guardado en la nube');
-                
-            } catch (error) {
-                console.error('❌ Error guardando progreso:', error);
-                showNotification('❌ Error al guardar progreso');
-            }
-        };
-
-        // Actualizar visualización del perfil
-        function updateProfileDisplay(profile) {
-            const profileElement = document.getElementById('empire-profile-info');
-            if (profileElement) {
-                profileElement.innerHTML = `
-                    <div style="margin-bottom: 12px; border-bottom: 1px solid #00b894; padding-bottom: 8px;">
-                        <strong style="color: #00b894; font-size: 16px;">🎖️ ${profile.name}</strong>
-                    </div>
-                    <div style="margin-bottom: 10px;">
-                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-                            <span>Nivel:</span>
-                            <span style="color: #ffeaa7;">${profile.level}</span>
-                        </div>
-                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-                            <span>Oro:</span>
-                            <span style="color: gold;">${profile.gold} ⭐</span>
-                        </div>
-                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-                            <span>Petróleo:</span>
-                            <span style="color: #ff7675;">${profile.oil} ⛽</span>
-                        </div>
-                        <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                            <span>Soldados:</span>
-                            <span style="color: #74b9ff;">${profile.soldiers} 💂</span>
-                        </div>
-                    </div>
-                    <div style="display: flex; gap: 5px; justify-content: space-between;">
-                        <button onclick="saveGameProgress()" 
-                                style="background: #00b894; color: white; border: none; padding: 8px 12px; border-radius: 5px; cursor: pointer; font-size: 12px; flex: 1;">
-                            💾 Guardar
-                        </button>
-                        <button onclick="goToMainMenu()" 
-                                style="background: #636e72; color: white; border: none; padding: 8px 12px; border-radius: 5px; cursor: pointer; font-size: 12px; flex: 1;">
-                            🏠 Menú
-                        </button>
-                    </div>
-                `;
-            }
-        }
-
-        // Mostrar notificación
-        window.showNotification = function(message) {
-            // Remover notificación anterior si existe
-            const existingNotification = document.getElementById('empire-notification');
-            if (existingNotification) {
-                existingNotification.remove();
-            }
-
-            const notification = document.createElement('div');
-            notification.id = 'empire-notification';
-            notification.style.cssText = `
-                position: fixed;
-                top: 50%;
-                left: 50%;
-                transform: translate(-50%, -50%);
-                background: rgba(0, 0, 0, 0.95);
-                color: white;
-                padding: 20px 30px;
-                border-radius: 10px;
-                z-index: 10001;
-                font-family: Arial, sans-serif;
-                border: 2px solid #00b894;
-                font-size: 16px;
-                text-align: center;
-                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.7);
-                backdrop-filter: blur(5px);
-            `;
-            notification.textContent = message;
-            document.body.appendChild(notification);
-
-            setTimeout(() => {
-                if (notification.parentNode) {
-                    notification.remove();
-                }
-            }, 2000);
-        };
-
-        // Ir al menú principal
-        window.goToMainMenu = function() {
-            if (confirm('¿Volver al menú principal?\n\nTu progreso se guardará automáticamente.')) {
-                saveGameProgress();
-                setTimeout(() => {
-                    window.location.href = 'index.html';
-                }, 1000);
-            }
-        };
-
-        // Guardar y salir
-        window.saveAndExit = function() {
-            saveGameProgress();
-            setTimeout(() => {
-                window.location.href = 'index.html';
-            }, 1500);
-        };
-
-        // Guardado automático cada 2 minutos
-        setInterval(saveGameProgress, 120000);
-
-        // Guardar cuando se cierre la página
-        window.addEventListener('beforeunload', function() {
-            saveGameProgress();
-        });
-
-        console.log("🎯 Sistema de perfiles integrado en home.html");
-    </script>
+<body class="ego_wide canvas center_fixed_width_app fbx UIPage_LoggedOut liquid hideBanner Locale_en_US">
+	<!-- TOP BANNER -->
+	<div class="-cx-PRIVATE-fbLayout__root">
+	  	<div id="pagelet_bluebar" data-referrer="pagelet_bluebar">
+	  		<div id="blueBarHolder">
+	  			<div id="blueBar">
+					<div class="loggedout_menubar_container">
+						<div class="clearfix loggedout_menubar">
+							<a class="lfloat" href="/" title="Go to Facebook Home">
+								<i class="fb_logo img sp_e2gpgs sx_584554">
+									<u>Facebook logo</u>
+								</i>
+							</a>
+							<ul class="rfloat" style="color:#fff;">
+								<li style="margin-right: 7px;">
+									<!-- CURRENT USER -->
+									<b>
+									</b>
+									<!-- DROPDOWN -->
+									<ul class="dropdownUser">
+										<li><a href="#" onclick="newPlayer(); return false">New player</a><li>
+										<!--
+										<li><a href="#" onclick="return false">Change ore</a>
+											<ul class="third-level-menu">
+												<li><a href="/patch/user_object/userInfo/player/playerResourceType/int/3"><img style="width:25px;" src="img/Aluminum_60.png"></a></li>
+												<li><a href="/patch/user_object/userInfo/player/playerResourceType/int/4"><img style="width:25px;" src="img/Copper_60.png"></a></li>
+												<li><a href="/patch/user_object/userInfo/player/playerResourceType/int/5"><img style="width:25px;" src="img/Gold_60.png"></a></li>
+												<li><a href="/patch/user_object/userInfo/player/playerResourceType/int/6"><img style="width:25px;" src="img/Iron_60.png"></a></li>
+												<li><a href="/patch/user_object/userInfo/player/playerResourceType/int/7"><img style="width:25px;" src="img/Uranium_60.png"></a></li>
+											</ul>
+										</li>
+										-->
+										<!-- OTHER USERS -->
+										
+										<li>
+											<a href="#" onclick="changeSession(&quot;session:3b5dc207-3783-4d91-bd87-02b14d0e50c2&quot;); return false">
+												<div style="position:relative; display: inline-block; vertical-align: top; text-align: left;">
+													<p style="margin-top:8px;">Survival template </p>
+												</div>
+												<div style="position:relative; text-align:center; display: inline-block;" title="236014 xp">
+													<img src="img/xp.png" style="width:30px;"> 
+													<div style="position:absolute; top:40%; left:50%; transform: translate(-50%, -50%); color:black;">
+														85
+													</div>
+												</div>
+											</a>
+										</li>
+										
+										<li>
+											<a href="#" onclick="changeSession(&quot;session:39c524af-668c-43e4-8b82-472cce0f88e1&quot;); return false">
+												<div style="position:relative; display: inline-block; vertical-align: top; text-align: left;">
+													<p style="margin-top:8px;">Imperio de Ivan </p>
+												</div>
+												<div style="position:relative; text-align:center; display: inline-block;" title="7074 xp">
+													<img src="img/xp.png" style="width:30px;"> 
+													<div style="position:absolute; top:40%; left:50%; transform: translate(-50%, -50%); color:black;">
+														61
+													</div>
+												</div>
+											</a>
+										</li>
+										
+										<li>
+											<a href="#" onclick="changeSession(&quot;session:b747662c-76be-4c0a-b4eb-782fb6086daf&quot;); return false">
+												<div style="position:relative; display: inline-block; vertical-align: top; text-align: left;">
+													<p style="margin-top:8px;">SCARLETH </p>
+												</div>
+												<div style="position:relative; text-align:center; display: inline-block;" title="1415 xp">
+													<img src="img/xp.png" style="width:30px;"> 
+													<div style="position:absolute; top:40%; left:50%; transform: translate(-50%, -50%); color:black;">
+														18
+													</div>
+												</div>
+											</a>
+										</li>
+										
+										<li>
+											<a href="#" onclick="changeSession(&quot;session:d6e22db6-ceef-43dd-bc8d-551f007b59ff&quot;); return false">
+												<div style="position:relative; display: inline-block; vertical-align: top; text-align: left;">
+													<p style="margin-top:8px;">ARAGON III </p>
+												</div>
+												<div style="position:relative; text-align:center; display: inline-block;" title="2463 xp">
+													<img src="img/xp.png" style="width:30px;"> 
+													<div style="position:absolute; top:40%; left:50%; transform: translate(-50%, -50%); color:black;">
+														23
+													</div>
+												</div>
+											</a>
+										</li>
+										
+										<li>
+											<a href="#" onclick="changeSession(&quot;session:71b983fa-0ed0-42ad-85c9-e434060dbd63&quot;); return false">
+												<div style="position:relative; display: inline-block; vertical-align: top; text-align: left;">
+													<p style="margin-top:8px;">Rising Empire </p>
+												</div>
+												<div style="position:relative; text-align:center; display: inline-block;" title="1932 xp">
+													<img src="img/xp.png" style="width:30px;"> 
+													<div style="position:absolute; top:40%; left:50%; transform: translate(-50%, -50%); color:black;">
+														50
+													</div>
+												</div>
+											</a>
+										</li>
+										
+										<li>
+											<a href="#" onclick="changeSession(&quot;session:b5658674-a015-4f39-becb-3de594d3c22f&quot;); return false">
+												<div style="position:relative; display: inline-block; vertical-align: top; text-align: left;">
+													<p style="margin-top:8px;">Mhrdhan </p>
+												</div>
+												<div style="position:relative; text-align:center; display: inline-block;" title="110 xp">
+													<img src="img/xp.png" style="width:30px;"> 
+													<div style="position:absolute; top:40%; left:50%; transform: translate(-50%, -50%); color:black;">
+														6
+													</div>
+												</div>
+											</a>
+										</li>
+										
+										<li>
+											<a href="#" onclick="changeSession(&quot;session:5835dc1a-6378-4f9f-9bb8-1e1272a17a55&quot;); return false">
+												<div style="position:relative; display: inline-block; vertical-align: top; text-align: left;">
+													<p style="margin-top:8px;">Rising Empire </p>
+												</div>
+												<div style="position:relative; text-align:center; display: inline-block;" title="184 xp">
+													<img src="img/xp.png" style="width:30px;"> 
+													<div style="position:absolute; top:40%; left:50%; transform: translate(-50%, -50%); color:black;">
+														7
+													</div>
+												</div>
+											</a>
+										</li>
+										
+										<li>
+											<a href="#" onclick="changeSession(&quot;session:e477d060-e7ef-476a-b347-3047e8691fa5&quot;); return false">
+												<div style="position:relative; display: inline-block; vertical-align: top; text-align: left;">
+													<p style="margin-top:8px;">Rising Empire </p>
+												</div>
+												<div style="position:relative; text-align:center; display: inline-block;" title="892 xp">
+													<img src="img/xp.png" style="width:30px;"> 
+													<div style="position:absolute; top:40%; left:50%; transform: translate(-50%, -50%); color:black;">
+														85
+													</div>
+												</div>
+											</a>
+										</li>
+										
+										<li>
+											<a href="#" onclick="changeSession(&quot;session:f0349599-ca73-44f5-9f46-4e5c359e6ea8&quot;); return false">
+												<div style="position:relative; display: inline-block; vertical-align: top; text-align: left;">
+													<p style="margin-top:8px;">Rising Empire </p>
+												</div>
+												<div style="position:relative; text-align:center; display: inline-block;" title="8 xp">
+													<img src="img/xp.png" style="width:30px;"> 
+													<div style="position:absolute; top:40%; left:50%; transform: translate(-50%, -50%); color:black;">
+														2
+													</div>
+												</div>
+											</a>
+										</li>
+										
+										<li>
+											<a href="#" onclick="changeSession(&quot;session:113b9147-fc51-4a50-8b43-e14307fa4195&quot;); return false">
+												<div style="position:relative; display: inline-block; vertical-align: top; text-align: left;">
+													<p style="margin-top:8px;">L1BERATO2000 </p>
+												</div>
+												<div style="position:relative; text-align:center; display: inline-block;" title="1099 xp">
+													<img src="img/xp.png" style="width:30px;"> 
+													<div style="position:absolute; top:40%; left:50%; transform: translate(-50%, -50%); color:black;">
+														85
+													</div>
+												</div>
+											</a>
+										</li>
+										
+										<li>
+											<a href="#" onclick="changeSession(&quot;session:e1318774-a2f2-4db0-aeee-4628f021a4f6&quot;); return false">
+												<div style="position:relative; display: inline-block; vertical-align: top; text-align: left;">
+													<p style="margin-top:8px;">Rising Empire </p>
+												</div>
+												<div style="position:relative; text-align:center; display: inline-block;" title="8 xp">
+													<img src="img/xp.png" style="width:30px;"> 
+													<div style="position:absolute; top:40%; left:50%; transform: translate(-50%, -50%); color:black;">
+														2
+													</div>
+												</div>
+											</a>
+										</li>
+										
+										<li>
+											<a href="#" onclick="changeSession(&quot;session:920926ca-15c1-42c2-9bab-a51bd0a45af3&quot;); return false">
+												<div style="position:relative; display: inline-block; vertical-align: top; text-align: left;">
+													<p style="margin-top:8px;">Rising Empire </p>
+												</div>
+												<div style="position:relative; text-align:center; display: inline-block;" title="3 xp">
+													<img src="img/xp.png" style="width:30px;"> 
+													<div style="position:absolute; top:40%; left:50%; transform: translate(-50%, -50%); color:black;">
+														1
+													</div>
+												</div>
+											</a>
+										</li>
+										
+										<li>
+											<a href="#" onclick="changeSession(&quot;session:b1dc8691-1de1-4972-bff5-9429f49ecc22&quot;); return false">
+												<div style="position:relative; display: inline-block; vertical-align: top; text-align: left;">
+													<p style="margin-top:8px;">Rising Empire </p>
+												</div>
+												<div style="position:relative; text-align:center; display: inline-block;" title="0 xp">
+													<img src="img/xp.png" style="width:30px;"> 
+													<div style="position:absolute; top:40%; left:50%; transform: translate(-50%, -50%); color:black;">
+														1
+													</div>
+												</div>
+											</a>
+										</li>
+										
+										<li>
+											<a href="#" onclick="changeSession(&quot;session:24cd72d6-74aa-4494-a1e3-75dcefb01dda&quot;); return false">
+												<div style="position:relative; display: inline-block; vertical-align: top; text-align: left;">
+													<p style="margin-top:8px;">Rising Empire </p>
+												</div>
+												<div style="position:relative; text-align:center; display: inline-block;" title="1 xp">
+													<img src="img/xp.png" style="width:30px;"> 
+													<div style="position:absolute; top:40%; left:50%; transform: translate(-50%, -50%); color:black;">
+														1
+													</div>
+												</div>
+											</a>
+										</li>
+										
+										<li>
+											<a href="#" onclick="changeSession(&quot;session:517ef562-e527-4ae8-af3e-580844468e38&quot;); return false">
+												<div style="position:relative; display: inline-block; vertical-align: top; text-align: left;">
+													<p style="margin-top:8px;">Emalb&#39;s Empire </p>
+												</div>
+												<div style="position:relative; text-align:center; display: inline-block;" title="1162 xp">
+													<img src="img/xp.png" style="width:30px;"> 
+													<div style="position:absolute; top:40%; left:50%; transform: translate(-50%, -50%); color:black;">
+														120
+													</div>
+												</div>
+											</a>
+										</li>
+										
+										<li>
+											<a href="#" onclick="changeSession(&quot;session:ea539e1c-bed5-4719-a09d-762b45502d99&quot;); return false">
+												<div style="position:relative; display: inline-block; vertical-align: top; text-align: left;">
+													<p style="margin-top:8px;">Rising Empire </p>
+												</div>
+												<div style="position:relative; text-align:center; display: inline-block;" title="3 xp">
+													<img src="img/xp.png" style="width:30px;"> 
+													<div style="position:absolute; top:40%; left:50%; transform: translate(-50%, -50%); color:black;">
+														1
+													</div>
+												</div>
+											</a>
+										</li>
+										
+										<li>
+											<a href="#" onclick="changeSession(&quot;session:ecef9cf5-2751-4b9f-a598-d2cb87338c17&quot;); return false">
+												<div style="position:relative; display: inline-block; vertical-align: top; text-align: left;">
+													<p style="margin-top:8px;">Mike´s empire </p>
+												</div>
+												<div style="position:relative; text-align:center; display: inline-block;" title="234480 xp">
+													<img src="img/xp.png" style="width:30px;"> 
+													<div style="position:absolute; top:40%; left:50%; transform: translate(-50%, -50%); color:black;">
+														66
+													</div>
+												</div>
+											</a>
+										</li>
+										
+										<li>
+											<a href="#" onclick="changeSession(&quot;session:5e5973f0-e317-47dd-8fe1-d4e42840193d&quot;); return false">
+												<div style="position:relative; display: inline-block; vertical-align: top; text-align: left;">
+													<p style="margin-top:8px;">Altonic Empire </p>
+												</div>
+												<div style="position:relative; text-align:center; display: inline-block;" title="302 xp">
+													<img src="img/xp.png" style="width:30px;"> 
+													<div style="position:absolute; top:40%; left:50%; transform: translate(-50%, -50%); color:black;">
+														8
+													</div>
+												</div>
+											</a>
+										</li>
+										
+										<li>
+											<a href="#" onclick="changeSession(&quot;session:d52e9616-d680-4e39-a4c7-e4a99155f5e9&quot;); return false">
+												<div style="position:relative; display: inline-block; vertical-align: top; text-align: left;">
+													<p style="margin-top:8px;">Rising Empire </p>
+												</div>
+												<div style="position:relative; text-align:center; display: inline-block;" title="2 xp">
+													<img src="img/xp.png" style="width:30px;"> 
+													<div style="position:absolute; top:40%; left:50%; transform: translate(-50%, -50%); color:black;">
+														1
+													</div>
+												</div>
+											</a>
+										</li>
+										
+										<li>
+											<a href="#" onclick="changeSession(&quot;session:36c8b8a8-4bad-41f6-bea7-15cb437fe36c&quot;); return false">
+												<div style="position:relative; display: inline-block; vertical-align: top; text-align: left;">
+													<p style="margin-top:8px;">Zee Island  </p>
+												</div>
+												<div style="position:relative; text-align:center; display: inline-block;" title="355 xp">
+													<img src="img/xp.png" style="width:30px;"> 
+													<div style="position:absolute; top:40%; left:50%; transform: translate(-50%, -50%); color:black;">
+														12
+													</div>
+												</div>
+											</a>
+										</li>
+										
+										<li>
+											<a href="#" onclick="changeSession(&quot;session:3b7e5c5d-ccea-44c7-9bf8-f12664e5622d&quot;); return false">
+												<div style="position:relative; display: inline-block; vertical-align: top; text-align: left;">
+													<p style="margin-top:8px;">Darwin_Alex </p>
+												</div>
+												<div style="position:relative; text-align:center; display: inline-block;" title="81669 xp">
+													<img src="img/xp.png" style="width:30px;"> 
+													<div style="position:absolute; top:40%; left:50%; transform: translate(-50%, -50%); color:black;">
+														73
+													</div>
+												</div>
+											</a>
+										</li>
+										
+										<li>
+											<a href="#" onclick="changeSession(&quot;session:e0c87866-3b0c-44b5-8866-87f36d9949ec&quot;); return false">
+												<div style="position:relative; display: inline-block; vertical-align: top; text-align: left;">
+													<p style="margin-top:8px;">Rising Empire </p>
+												</div>
+												<div style="position:relative; text-align:center; display: inline-block;" title="11 xp">
+													<img src="img/xp.png" style="width:30px;"> 
+													<div style="position:absolute; top:40%; left:50%; transform: translate(-50%, -50%); color:black;">
+														2
+													</div>
+												</div>
+											</a>
+										</li>
+										
+										<li>
+											<a href="#" onclick="changeSession(&quot;session:cb0168e6-c41b-4a6b-a408-61a3d39e5d39&quot;); return false">
+												<div style="position:relative; display: inline-block; vertical-align: top; text-align: left;">
+													<p style="margin-top:8px;">juanpfm26 </p>
+												</div>
+												<div style="position:relative; text-align:center; display: inline-block;" title="580 xp">
+													<img src="img/xp.png" style="width:30px;"> 
+													<div style="position:absolute; top:40%; left:50%; transform: translate(-50%, -50%); color:black;">
+														11
+													</div>
+												</div>
+											</a>
+										</li>
+										
+										<li>
+											<a href="#" onclick="changeSession(&quot;session:6b76796d-1ba4-43fd-a1d7-8d55a923399f&quot;); return false">
+												<div style="position:relative; display: inline-block; vertical-align: top; text-align: left;">
+													<p style="margin-top:8px;">Brunetta 11 </p>
+												</div>
+												<div style="position:relative; text-align:center; display: inline-block;" title="45 xp">
+													<img src="img/xp.png" style="width:30px;"> 
+													<div style="position:absolute; top:40%; left:50%; transform: translate(-50%, -50%); color:black;">
+														4
+													</div>
+												</div>
+											</a>
+										</li>
+										
+										<li>
+											<a href="#" onclick="changeSession(&quot;session:b82df5b6-845f-46cd-89a5-f60058d49ddd&quot;); return false">
+												<div style="position:relative; display: inline-block; vertical-align: top; text-align: left;">
+													<p style="margin-top:8px;">Rising Empire </p>
+												</div>
+												<div style="position:relative; text-align:center; display: inline-block;" title="369 xp">
+													<img src="img/xp.png" style="width:30px;"> 
+													<div style="position:absolute; top:40%; left:50%; transform: translate(-50%, -50%); color:black;">
+														9
+													</div>
+												</div>
+											</a>
+										</li>
+										
+										<li>
+											<a href="#" onclick="changeSession(&quot;session:e155f806-ca53-4b94-96ce-7ff0c6a69b8f&quot;); return false">
+												<div style="position:relative; display: inline-block; vertical-align: top; text-align: left;">
+													<p style="margin-top:8px;">Rising Empire </p>
+												</div>
+												<div style="position:relative; text-align:center; display: inline-block;" title="0 xp">
+													<img src="img/xp.png" style="width:30px;"> 
+													<div style="position:absolute; top:40%; left:50%; transform: translate(-50%, -50%); color:black;">
+														1
+													</div>
+												</div>
+											</a>
+										</li>
+										
+										<li>
+											<a href="#" onclick="changeSession(&quot;session:51099f25-f33a-4fe7-9a5d-10617cd717cd&quot;); return false">
+												<div style="position:relative; display: inline-block; vertical-align: top; text-align: left;">
+													<p style="margin-top:8px;">Allex </p>
+												</div>
+												<div style="position:relative; text-align:center; display: inline-block;" title="720 xp">
+													<img src="img/xp.png" style="width:30px;"> 
+													<div style="position:absolute; top:40%; left:50%; transform: translate(-50%, -50%); color:black;">
+														13
+													</div>
+												</div>
+											</a>
+										</li>
+										
+										<li>
+											<a href="#" onclick="changeSession(&quot;session:3b341981-6e1f-4d9a-8832-879960e546f7&quot;); return false">
+												<div style="position:relative; display: inline-block; vertical-align: top; text-align: left;">
+													<p style="margin-top:8px;">Rising Empire </p>
+												</div>
+												<div style="position:relative; text-align:center; display: inline-block;" title="0 xp">
+													<img src="img/xp.png" style="width:30px;"> 
+													<div style="position:absolute; top:40%; left:50%; transform: translate(-50%, -50%); color:black;">
+														1
+													</div>
+												</div>
+											</a>
+										</li>
+										
+										<li>
+											<a href="#" onclick="changeSession(&quot;session:8a4515e6-64a5-428f-b447-29de2fb1c4f5&quot;); return false">
+												<div style="position:relative; display: inline-block; vertical-align: top; text-align: left;">
+													<p style="margin-top:8px;">Elie&#39;s Empire </p>
+												</div>
+												<div style="position:relative; text-align:center; display: inline-block;" title="5459 xp">
+													<img src="img/xp.png" style="width:30px;"> 
+													<div style="position:absolute; top:40%; left:50%; transform: translate(-50%, -50%); color:black;">
+														31
+													</div>
+												</div>
+											</a>
+										</li>
+										
+									</ul>
+								</li>
+								<!-- Session Buttons -->
+								<a class="uiButton uiButtonConfirm" href="#" onclick="logout(); return false" role="button" name="try_again_button">
+									<span class="uiButtonText">Logout</span>
+								</a>
+								<a class="inputaux uiButton" href="save-editor" role="button">
+									<span class="uiButtonText">Edit Empire</span>
+								</a>
+								<!--<a class="inputaux uiButton" href="nodebug.html" role="button">
+									<span class="uiButtonText">No debug mode</span>
+								</a>-->
+							</ul>
+						</div>
+					</div>
+	  				<div class="signupBanner">
+	  					<div class="signup_bar_container">
+	  						<div class="signup_box clearfix">
+			  				</div>
+			  			</div>
+			  		</div>
+			  	</div>
+	  		</div>
+		</div>
+	</div>
+	<!-- PAGE BODY -->
+	<div id="globalContainer" class="uiContextualLayerParent">
+		<div id="content" class="fb_content clearfix">
+			<div>
+				<div id="mainContainer">
+					<div id="contentCol" class="clearfix">
+						<div id="contentArea" role="main" aria-describedby="pageTitle">
+							<!--<div class="uiInterstitial canvas_error_page " title="" style="margin-bottom: 20px">
+								<div class="uiInterstitialBar uiBoxGray topborder">
+									<div class="clearfix">
+										<img src="img/logo.png"><p style="display: inline">0.08a.2023_04_28</p>
+										<div class="rfloat">
+											<a class="uiButton uiButtonConfirm" href="nodebug.html" role="button" name="try_again_button">
+												<span class="uiButtonText">No debug version</span>
+											</a>
+											<a class="inputaux uiButton" href="wipe_session" role="button" name="exit_button">
+												<span class="uiButtonText">Delete save game</span>
+											</a>
+											<a class="inputaux uiButton" href="save-editor" role="button" name="exit_button">
+												<span class="uiButtonText">Edit save game</span>
+											</a>
+										</div>
+										<div class="pts">
+										</div>
+									</div>
+								</div>
+							</div>-->
+							<center style="margin-top: 37px;">
+								<div class="zBar" id="zBar">
+									<div style="display: inline-block; float: left; width: 315px; height:105px;"><!-- Used for background--></div>
+									<div style="float: left; height:97px; padding: 4px;">
+										<!-- zbar column 1 content here-->
+										<a title="Empires & Allies Wiki" href="https://empiresandallies.fandom.com/wiki/Empires_%26_Allies_Wiki/Main_2" target="_blank"><div class="zBarButtons" id="zBarButtons" style="background-image: url('img/fandom.png');"></div></a>
+										<a title="Discord group" href="https://discord.gg/xrNE6Hg" target="_blank"><div class="zBarButtons" id="zBarButtons" style="background-image: url('img/discord.png');"></div></a>
+										<a title="Github repository" href="https://github.com/AcidCaos/raisetheempires#readme" target="_blank"><div class="zBarButtons" id="zBarButtons" style="background-image: url('img/github.png');"></div></a>
+										<a title="Termux/GNU/Linux version" href="https://github.com/Questandachievement7Developer/RaiseTheEmpiresPort_Native" target="_blank"><div class="zBarButtons" id="zBarButtons" style="background-image: url('img/termux.png');"></div></a>
+										<!-- VERSION -->
+										<br><br>
+										<p style="display: inline">Raise the Empires 0.08a.2023_04_28</p>
+									</div>
+									<div style="float: right; height:97px; padding: 4px;">
+										<!-- zbar column 3 content here-->
+										<img class="rewardVilleLogo" src="img/RewardVilleLogo.png" style="vertical-align: bottom; display: inline; margin-top: 53px;">
+									</div>
+									<div style="float: right; height:97px; padding: 4px; display: flex;">
+										<!-- zbar column 2 content here-->
+										<img src="img/Zcoins.png" style="align-self:flex-end">							
+									</div>
+								</div>
+							</center>
+							<center>
+								<div style="text-align: center; width:1010px;">
+									<div class="gameButtons" id="gameButtons" style=" margin-bottom:4px; margin-left: 5px; text-align: left; height:20px; padding-top: 4px;">
+										<a href="#" class="unsel">Free Gifts</a>
+										<a href="#" class="selec">Play</a>
+										<a href="/friends.html" class="unsel">My Neighbors</a>
+										<a href="#" class="unsel">Invite Friends</a>
+										<a title="Check the Empires & Allies Wiki" href="https://empiresandallies.fandom.com/wiki/Empires_%26_Allies_Wiki/Main_2" class="unsel">Help</a>
+										<a title="Adds 10k Empire Points" href="/gazillionaire" class="unsel">Get Empire Points</a>
+										<a href="#" class="unsel">Earn Empire Points</a>
+										<a href="#" class="unsel">GameCards</a>
+										<a href="#" style="display:inline; float:right; padding-top: 0px;"><img src="img/globe.png" style="height:25px"></a>
+									</div>
+								</div>
+								<div>
+									<div style="margin:10px"></div>
+									<div style="position: relative; width: 1000px; min-height: 750px; margin: 0; padding: 0; border: 0;">
+										<div id="game_object" style="width: 1000px; min-height: 750px; display: inline-block; margin: 0; padding: 0; border: 0;">
+											<object codebase="http://download.macromedia.com/pub/shockwave/cabs/flash/swflash.cab#version=6,0,0,0" WIDTH="1000" HEIGHT="750" id="ea" ALIGN="">
+												<param NAME=movie VALUE="/files/empire-s.assets.zgncdn.com/assets/109338/ZGame.109338.swf">
+												<param name=FlashVars value="serverTime=1761716794.63979&is_staging=true&debugMode=true&generateSchema=1&sn_app_url=&stats=1">  <!--serverTime=1565300889& mute=true& &zlingshot_zoom= skipFacebook=false&decouple_from_facebook=false&decoupled_facebook_id=5452 -->
+												<param NAME=quality VALUE=high>
+												<param NAME=bgcolor VALUE=#333399>
+												<param name="allowFullScreen" value="true" />
+												<embed id="game_embed" src="/files/empire-s.assets.zgncdn.com/assets/109338/ZGame.109338.swf" allowFullScreen="true" FlashVars="serverTime=1761716794.63979&is_staging=true&debugMode=true&generateSchema=1&sn_app_url=&stats=1" quality=high bgcolor="#333399" WIDTH="1000" HEIGHT="750" NAME="ea" ALIGN="" TYPE="application/x-shockwave-flash" PLUGINSPAGE="http://www.macromedia.com/go/getflashplayer">
+												</embed>
+											</object>
+										</div>
+										<!-- Loading game div is rendered on top of the flash object. -->
+										<div id="loading_game" style="position: absolute; top: 0; left: 0; width:1000px; height:750px; background-color: white;">
+											<div name="motd" style="width:750px; height:500px; display: inline-block; margin: 0; padding: 0; border: 0;  background-image: url('img/motds/MOTD_Blazing_Inferno_8.png'); background-size: cover; background-position: center; background-repeat: no-repeat; background-clip: border-box; margin-top: 100px; box-shadow: inset 0px -30px 70px 50px #000;">
+												<div name="EA_frame" style="width:750px; height:690px; display: inline-block; margin: 0; padding: 0; border: 0; background-image: url('img/loading_frame_remastered.png'); background-size: contain; background-position: center; background-repeat: no-repeat; margin-top: -100px;">
+													<center style="padding-top: 460px; width: 570px; margin: 0; border: 0; /*background-color: #e5f1fd;*/">
+														<!--<img id="loading_gif" src="img/loading.gif">-->
+														<br>
+														<p id="loading_message" style="font-size: 30px; color: white; text-shadow: 0px 0px 6px black; margin-bottom: 15px;">Detecting flash...</p>											
+														<div id="progress_bar" style="display: flex; width: 45%; height: 18px; border-radius: 10px; overflow: hidden; background-color: #6d5554; box-shadow: inset 0px 4px 9px -1px #4c4635;"> 
+															<div id="inner_progress_bar" style="width: 0%; background-color: #e6b104; box-shadow: inset 0px 4px 9px -1px #fae361; transition: width 1s linear;"></div>
+														</div>
+													</center>
+													<div style="width: 750px; position: absolute; top: 0; padding-top: 280px;">
+														<center>
+															<div id="flash_enabler" style="/*display: none;*/ width: 300px; /*border-radius: 20px; border: 1px solid #e5f1fd; overflow: hidden;*/">
+																<!-- Fake Flash object to trigger flash enable popup -->
+																<object codebase="http://download.macromedia.com/pub/shockwave/cabs/flash/swflash.cab#version=6,0,0,0" width=300>
+																	<embed id="game_embed" WMODE="transparent" bgcolor="white" TYPE="application/x-shockwave-flash" PLUGINSPAGE="http://www.macromedia.com/go/getflashplayer" width=300>
+																	</embed>
+																</object>
+															</div>
+														</center>
+													</div>
+												</div>
+											</div>
+										</div>
+										<script type="text/javascript" charset="utf-8">
+											loadingScreenUpdate()
+										</script>
+									</div>
+								</div>
+							</center>
+						</div>
+						<div style="margin: 30px"></div>
+						<div class="uiInterstitialBar uiBoxGray topborder">
+							<center>
+								<h3 style="display: inline;">Debug Panel</h3>
+								<p style="display: inline;">~</p>
+								<a href="nodebug.html">No debug mode</a>
+							</center>
+							<br>
+							<div class="clearfix">
+								<center><table style="border: 1px solid #3b5998; border-radius: 5px;">
+									<tr>
+										<td><div class="logbox" id="tutorial_step">&nbsp;</div></td>
+										<td><div class="logbox" id="world_log">&nbsp;</div></td>
+										<td><div class="logbox" id="other_log">&nbsp;</div></td>
+									</tr>
+								</table></center>
+								<center>
+									<p style="color: #666699;"> <br>
+									The Raise the Empires team. Empires &amp; Allies 0.08a.2023_04_28
+									</p>
+								</center>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
 </body>
 </html>
