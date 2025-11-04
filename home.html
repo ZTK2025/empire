@@ -23,7 +23,6 @@
 	<script src="js/empires.js"></script>
 	
 	<style>
-		/* Tus estilos Firebase aquí */
 		#firebase-profile-panel {
 			position: fixed;
 			top: 80px;
@@ -40,12 +39,116 @@
 			box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
 			backdrop-filter: blur(10px);
 		}
-		/* ... resto de estilos ... */
+		
+		#firebase-profile-panel h4 {
+			color: #00b894;
+			margin: 0 0 10px 0;
+			border-bottom: 1px solid #00b894;
+			padding-bottom: 8px;
+			font-size: 16px;
+		}
+		
+		.firebase-stats {
+			margin-bottom: 10px;
+		}
+		
+		.firebase-stat-row {
+			display: flex;
+			justify-content: space-between;
+			margin-bottom: 4px;
+		}
+		
+		.firebase-buttons {
+			display: flex;
+			gap: 5px;
+			justify-content: space-between;
+		}
+		
+		.firebase-btn {
+			background: #00b894;
+			color: white;
+			border: none;
+			padding: 8px 12px;
+			border-radius: 5px;
+			cursor: pointer;
+			font-size: 12px;
+			flex: 1;
+		}
+		
+		.firebase-btn-menu {
+			background: #636e72;
+		}
+		
+		.firebase-notification {
+			position: fixed;
+			top: 50%;
+			left: 50%;
+			transform: translate(-50%, -50%);
+			background: rgba(0, 0, 0, 0.95);
+			color: white;
+			padding: 20px 30px;
+			border-radius: 10px;
+			z-index: 10001;
+			font-family: Arial, sans-serif;
+			border: 2px solid #00b894;
+			font-size: 16px;
+			text-align: center;
+			box-shadow: 0 4px 20px rgba(0, 0, 0, 0.7);
+		}
 	</style>
 	
 	<script>
 		let currentFirebaseProfile = null;
 		let profileSystem = null;
+		
+		// DECLARAR saveGameProgress PRIMERO para evitar el error
+		async function saveGameProgress() {
+			if (!currentFirebaseProfile || !profileSystem) {
+				showNotification('❌ No hay perfil activo');
+				return;
+			}
+			
+			try {
+				const gameData = {
+					level: currentFirebaseProfile.level || 1,
+					gold: (currentFirebaseProfile.gold || 500) + Math.floor(Math.random() * 50),
+					oil: (currentFirebaseProfile.oil || 500) + Math.floor(Math.random() * 25),
+					soldiers: (currentFirebaseProfile.soldiers || 50) + Math.floor(Math.random() * 5),
+					lastSaved: new Date().toLocaleString('es-ES')
+				};
+				
+				await profileSystem.updateProfile(currentFirebaseProfile.id, gameData);
+				
+				const updatedProfile = { ...currentFirebaseProfile, ...gameData };
+				profileSystem.selectProfile(updatedProfile);
+				currentFirebaseProfile = updatedProfile;
+				
+				showFirebaseProfilePanel(updatedProfile);
+				showNotification('✅ Progreso guardado en Firebase');
+				
+			} catch (error) {
+				console.error('❌ Error saving progress:', error);
+				showNotification('❌ Error al guardar progreso');
+			}
+		}
+		
+		function showNotification(message) {
+			const existingNotification = document.querySelector('.firebase-notification');
+			if (existingNotification) {
+				existingNotification.remove();
+			}
+			
+			const notification = document.createElement('div');
+			notification.className = 'firebase-notification';
+			notification.textContent = message;
+			document.body.appendChild(notification);
+			
+			setTimeout(() => {
+				if (notification.parentNode) {
+					notification.remove();
+				}
+			}, 2000);
+		}
 		
 		function initializeFirebase() {
 			try {
@@ -64,6 +167,7 @@
 				console.log("✅ Firebase profile loaded:", profile.name);
 				showFirebaseProfilePanel(profile);
 				
+				// Configurar el intervalo después de que saveGameProgress esté definido
 				setInterval(saveGameProgress, 120000);
 				
 			} catch (error) {
@@ -108,7 +212,95 @@
 			document.body.appendChild(panel);
 		}
 		
-		// ... resto de tus funciones Firebase ...
+		function goToMainMenu() {
+			if (confirm('¿Volver al menú principal?\n\nTu progreso se guardará automáticamente.')) {
+				saveGameProgress();
+				setTimeout(() => {
+					window.location.href = 'index.html';
+				}, 1000);
+			}
+		}
+
+		function getUserInfo() {
+			console.log("getUserInfo called");
+			
+			if (typeof inner_getUserInfo === 'function') {
+				inner_getUserInfo();
+			}
+			
+			if (currentFirebaseProfile) {
+				console.log("🔥 getUserInfo usando datos de Firebase");
+				return {
+					'zid': currentFirebaseProfile.id || 6582090459255810,
+					'uid': currentFirebaseProfile.id || 6582090459255810,
+					'first_name': currentFirebaseProfile.name || "Comandante",
+					'name': currentFirebaseProfile.name || "Comandante",
+					"sex": 'M',
+					'pic_square': 'img/avatars/blank.png',
+					'level': currentFirebaseProfile.level || 1,
+					'resources': currentFirebaseProfile.resources || 1000,
+					'gold': currentFirebaseProfile.gold || 500,
+					'oil': currentFirebaseProfile.oil || 500
+				};
+			}
+			
+			console.log("⚠️ getUserInfo usando datos locales");
+			return {
+				'zid': 6582090459255810,
+				'uid': 6582090459255810,
+				'first_name': "Emperor",
+				'name': "Emperor",
+				"sex": 'F',
+				'pic_square': 'img/avatars/blank.png'
+			};
+		}
+
+		function getFriendData() {
+			console.log("getFriendData called");
+			if (typeof inner_getFriendData === 'function') {
+				inner_getFriendData();
+			}
+			return [
+  {
+    "zid": 123,
+    "uid": 123,
+    "first_name": "Natalie",
+    "name": "Natalie Portman",
+    "sex": "F",
+    "portrait": "assets/game/GeneralAssetGroup_UI.swf/TheVille_50.png",
+    "pic": "assets/game/GeneralAssetGroup_UI.swf/TheVille_50.png",
+    "pic_square": "assets/game/GeneralAssetGroup_UI.swf/TheVille_50.png"
+  }
+			];
+		}
+
+		function getAppFriendIds() {
+			console.log("getAppFriendIds called");
+			if (typeof inner_getAppFriendIds === 'function') {
+				inner_getAppFriendIds();
+			}
+			return [123, 124, 131];
+		}
+
+		function onGameLoaded(seen, popp, canvas) {
+			console.log("🎮 Game is loaded " + seen + ", " + popp + ", " + canvas);
+			
+			if (typeof inner_onGameLoaded === 'function') {
+				inner_onGameLoaded();
+			} else {
+				console.log("ℹ️ inner_onGameLoaded no está definido, continuando...");
+			}
+			
+			setTimeout(() => {
+				const loadingScreen = document.getElementById('loading_game');
+				if (loadingScreen) {
+					loadingScreen.style.display = 'none';
+					console.log("✅ Pantalla de carga ocultada - Juego cargado");
+				}
+			}, 2000);
+			
+			return;
+		}
 	</script>
 </head>
 <body class="ego_wide canvas center_fixed_width_app fbx UIPage_LoggedOut liquid hideBanner Locale_en_US">
@@ -207,18 +399,16 @@
 									<div style="position: relative; width: 1000px; min-height: 750px; margin: 0; padding: 0; border: 0;">
 										<div id="game_object" style="width: 1000px; min-height: 750px; display: inline-block; margin: 0; padding: 0; border: 0;">
 											<object codebase="http://download.macromedia.com/pub/shockwave/cabs/flash/swflash.cab#version=6,0,0,0" WIDTH="1000" HEIGHT="750" id="ea" ALIGN="">
-												<!-- RUTA CORREGIDA -->
-												<param NAME=movie VALUE="files/GAME/ZGame.109338_tracer2.swf">
+												<param NAME=movie VALUE="files/ZGame.109338_tracer2.swf">
 												<param name=FlashVars value="serverTime=1761716794.63979&is_staging=true&debugMode=true&generateSchema=1&sn_app_url=&stats=1">
 												<param NAME=quality VALUE=high>
 												<param NAME=bgcolor VALUE=#333399>
 												<param name="allowFullScreen" value="true" />
-												<!-- RUTA CORREGIDA -->
-												<embed id="game_embed" src="files/GAME/ZGame.109338_tracer2.swf" allowFullScreen="true" FlashVars="serverTime=1761716794.63979&is_staging=true&debugMode=true&generateSchema=1&sn_app_url=&stats=1" quality=high bgcolor="#333399" WIDTH="1000" HEIGHT="750" NAME="ea" ALIGN="" TYPE="application/x-shockwave-flash" PLUGINSPAGE="http://www.macromedia.com/go/getflashplayer">
+												<embed id="game_embed" src="files/ZGame.109338_tracer2.swf" allowFullScreen="true" FlashVars="serverTime=1761716794.63979&is_staging=true&debugMode=true&generateSchema=1&sn_app_url=&stats=1" quality=high bgcolor="#333399" WIDTH="1000" HEIGHT="750" NAME="ea" ALIGN="" TYPE="application/x-shockwave-flash" PLUGINSPAGE="http://www.macromedia.com/go/getflashplayer">
 												</embed>
 											</object>
 										</div>
-										<!-- Loading screen -->
+										<!-- Loading game div is rendered on top of the flash object. -->
 										<div id="loading_game" style="position: absolute; top: 0; left: 0; width:1000px; height:750px; background-color: white;">
 											<div name="motd" style="width:750px; height:500px; display: inline-block; margin: 0; padding: 0; border: 0;  background-image: url('img/loading_frame_remastered.png'); background-size: cover; background-position: center; background-repeat: no-repeat; background-clip: border-box; margin-top: 100px; box-shadow: inset 0px -30px 70px 50px #000;">
 												<div name="EA_frame" style="width:750px; height:690px; display: inline-block; margin: 0; padding: 0; border: 0; background-image: url('img/loading_frame_remastered.png'); background-size: contain; background-position: center; background-repeat: no-repeat; margin-top: -100px;">
@@ -282,11 +472,12 @@
 	</div>
 
 	<script>
+		// Inicializar Firebase cuando el DOM esté listo
 		window.addEventListener('DOMContentLoaded', function() {
 			setTimeout(initializeFirebase, 1000);
 		});
 
-		// Script de carga del juego
+		// Script para forzar carga del juego
 		function forceGameLoad() {
 			console.log("🚀 Forzando carga del juego...");
 			
@@ -338,6 +529,7 @@
 			setTimeout(forceGameLoad, 2000);
 		});
 
+		// Timeout de seguridad
 		setTimeout(() => {
 			const loadingScreen = document.getElementById('loading_game');
 			if (loadingScreen && loadingScreen.style.display !== 'none') {
