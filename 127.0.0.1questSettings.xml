@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<quests>
+    <quest id="tutorial_start">
+        <name>Welcome to Empire &amp; Allies</name>
+        <description>Learn the basics of building your empire</description>
+        <enabled>true</enabled>
+        <requiredLevel>1</requiredLevel>
+        <rewardGold>100</rewardGold>
+        <rewardOil>50</rewardOil>
+    </quest>
+</quests>

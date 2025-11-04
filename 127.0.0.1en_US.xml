@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<resources>
+    <string id="loading">Loading Empire &amp; Allies...</string>
+    <string id="error">Error loading game assets</string>
+    <string id="connection_lost">Connection to server lost</string>
+</resources>
