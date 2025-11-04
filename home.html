@@ -475,97 +475,112 @@
 		</div>
 	</div>
 
-	<!-- SISTEMA COMPLETO DE INTERCEPTACIÓN Y CARGA -->
+	<!-- SISTEMA MEJORADO DE INTERCEPTACIÓN -->
 	<script>
 	// =============================================
-	// SISTEMA DE INTERCEPTACIÓN PARA GITHUB PAGES
+	// SISTEMA DE INTERCEPTACIÓN MEJORADO
 	// =============================================
-	console.log('🎮 Inicializando sistema de interceptación para Empire & Allies...');
+	console.log('🎮 Inicializando sistema de interceptación MEJORADO...');
 
 	(function() {
-		// Lista de endpoints a interceptar
-		const endpointsToIntercept = [
-			'record_stats.php',
-			'127.0.0.1record_stats.php',
-			'stats.php',
-			'api/record_stats'
-		];
-
-		// 1. Interceptar XMLHttpRequest (método principal)
+		// INTERCEPTACIÓN COMPLETA DE XMLHttpRequest
 		const originalOpen = XMLHttpRequest.prototype.open;
 		XMLHttpRequest.prototype.open = function(method, url, ...rest) {
 			this._url = url;
 			this._method = method;
 			
-			// Verificar si es una URL que debemos interceptar
-			if (url && endpointsToIntercept.some(endpoint => url.includes(endpoint))) {
-				console.log(`🔄 Interceptando ${method} a: ${url}`);
-				
-				if (url.includes('record_stats')) {
-					console.log('📊 Redirigiendo record_stats a JSON estático');
-					url = './record_stats.json';
-				}
-			}
+			// DEBUG: Log todas las peticiones
+			console.log(`🔍 XMLHttpRequest: ${method} ${url}`);
 			
-			// También redirigir peticiones 127.0.0.1
-			if (url && url.includes('127.0.0.1')) {
-				console.log(`🔄 Interceptando petición 127.0.0.1: ${url}`);
-				const newUrl = url.replace('https://ztk2025.github.io/empire/127.0.0.1', './');
-				console.log(`📁 Redirigiendo a: ${newUrl}`);
-				url = newUrl;
+			// Interceptar TODAS las peticiones que contengan record_stats
+			if (url && typeof url === 'string') {
+				if (url.includes('record_stats')) {
+					console.log(`🔄 INTERCEPTANDO record_stats: ${url}`);
+					// Simular éxito inmediatamente
+					setTimeout(() => {
+						if (this.onreadystatechange) this.onreadystatechange();
+						if (this.onload) this.onload();
+					}, 10);
+					return originalOpen.call(this, method, 'about:blank', ...rest);
+				}
+				
+				// También interceptar peticiones 127.0.0.1
+				if (url.includes('127.0.0.1')) {
+					console.log(`🔄 INTERCEPTANDO 127.0.0.1: ${url}`);
+					if (url.includes('record_stats')) {
+						console.log('✅ Simulando éxito para 127.0.0.1record_stats.php');
+						setTimeout(() => {
+							if (this.onreadystatechange) this.onreadystatechange();
+							if (this.onload) this.onload();
+						}, 10);
+						return originalOpen.call(this, method, 'about:blank', ...rest);
+					}
+				}
 			}
 			
 			return originalOpen.call(this, method, url, ...rest);
 		};
 
-		// 2. Interceptar fetch()
+		// INTERCEPTACIÓN DE FETCH
 		const originalFetch = window.fetch;
 		window.fetch = function(...args) {
-			let url = args[0];
+			const url = args[0];
 			
 			if (typeof url === 'string') {
-				// Interceptar endpoints específicos
-				if (endpointsToIntercept.some(endpoint => url.includes(endpoint))) {
-					console.log(`🔄 Interceptando fetch a: ${url}`);
-					
-					if (url.includes('record_stats')) {
-						console.log('📊 Redirigiendo record_stats a JSON estático');
-						args[0] = './record_stats.json';
-					}
+				console.log(`🔍 Fetch: ${url}`);
+				
+				if (url.includes('record_stats')) {
+					console.log(`🔄 INTERCEPTANDO fetch record_stats: ${url}`);
+					// Devolver una promesa resuelta simulando éxito
+					return Promise.resolve({
+						ok: true,
+						status: 200,
+						statusText: 'OK',
+						json: () => Promise.resolve({status: "success", message: "Stats recorded"}),
+						text: () => Promise.resolve('{"status":"success","message":"Stats recorded"}')
+					});
 				}
 				
-				// Redirigir peticiones 127.0.0.1
-				if (url.includes('127.0.0.1')) {
-					console.log(`🔄 Interceptando fetch 127.0.0.1: ${url}`);
-					const newUrl = url.replace('https://ztk2025.github.io/empire/127.0.0.1', './');
-					console.log(`📁 Redirigiendo a: ${newUrl}`);
-					args[0] = newUrl;
+				if (url.includes('127.0.0.1') && url.includes('record_stats')) {
+					console.log('✅ Simulando éxito para fetch 127.0.0.1record_stats.php');
+					return Promise.resolve({
+						ok: true,
+						status: 200,
+						json: () => Promise.resolve({status: "success", message: "127.0.0.1 stats recorded"})
+					});
 				}
 			}
 			
 			return originalFetch.apply(this, args);
 		};
 
-		console.log('✅ Sistema de interceptación activado');
+		console.log('✅ Sistema de interceptación MEJORADO activado');
 	})();
 
 	// =============================================
-	// SISTEMA DE VERIFICACIÓN Y MONITOREO
+	// SIMULADOR DE RECORD_STATS
 	// =============================================
-	function verifyInterceptionSystem() {
-		console.log('🔍 Verificando sistema de interceptación:');
-		console.log('✅ XMLHttpRequest interceptado');
-		console.log('✅ Fetch interceptado'); 
-		console.log('✅ record_stats.json disponible');
-		console.log('✅ Peticiones 127.0.0.1 redirigidas');
-		console.log('🎯 Todas las peticiones problemáticas serán manejadas');
-	}
+	window.recordStatsSimulator = {
+		handleRequest: function(url, data) {
+			console.log('📊 Simulador record_stats procesando:', url);
+			console.log('📝 Datos recibidos:', data);
+			
+			// Simular procesamiento exitoso
+			return {
+				status: 'success',
+				message: 'Statistics recorded successfully',
+				timestamp: Date.now(),
+				session: 'empire_game_session',
+				player: window.currentFirebaseProfile?.name || 'ZTK'
+			};
+		}
+	};
 
 	// =============================================
 	// SISTEMA DE CARGA DEL JUEGO
 	// =============================================
 	function forceGameLoad() {
-		console.log("🚀 Forzando carga del juego con Firebase Realtime...");
+		console.log("🚀 Forzando carga del juego...");
 		
 		const checkFirebase = setInterval(() => {
 			if (window.currentFirebaseProfile) {
@@ -579,7 +594,7 @@
 						console.log("🎮 Juego cargado - Pantalla de carga ocultada");
 					}
 					showGameReadyMessage();
-				}, 5000);
+				}, 3000);
 			}
 		}, 500);
 	}
@@ -603,7 +618,7 @@
 			<h3>🎮 Empire & Allies Listo</h3>
 			<p>Jugando como: <strong>${window.currentFirebaseProfile?.name || 'ZTK'}</strong></p>
 			<p>Firebase Realtime conectado ✅</p>
-			<p>record_stats.json simulado ✅</p>
+			<p>Sistema de interceptación activo ✅</p>
 			<button onclick="this.parentElement.remove()" style="margin-top: 10px; padding: 5px 15px; background: #00b894; color: white; border: none; border-radius: 5px; cursor: pointer;">
 				Cerrar
 			</button>
@@ -612,84 +627,33 @@
 	}
 
 	// =============================================
-	// MANEJADOR DE ERRORES Y FALLBACKS
-	// =============================================
-	function handleFlashErrors() {
-		const flashObject = document.getElementById('ea');
-		const gameEmbed = document.getElementById('game_embed');
-		
-		if (!flashObject || !gameEmbed) {
-			console.error("❌ Objeto Flash no encontrado");
-			showErrorNotification("Error: Flash object not found");
-			return;
-		}
-		
-		// Verificar si Flash está cargando
-		setTimeout(() => {
-			const loadingScreen = document.getElementById('loading_game');
-			if (loadingScreen && loadingScreen.style.display !== 'none') {
-				console.log("⚠️ Flash puede estar teniendo problemas para cargar");
-				showErrorNotification("El juego está teniendo problemas para cargar. Verifica que Flash esté habilitado en tu navegador.");
-			}
-		}, 15000);
-	}
-
-	function showErrorNotification(message) {
-		const errorMsg = document.createElement('div');
-		errorMsg.style.cssText = `
-			position: fixed;
-			top: 50%;
-			left: 50%;
-			transform: translate(-50%, -50%);
-			background: rgba(255, 0, 0, 0.95);
-			color: white;
-			padding: 25px;
-			border-radius: 10px;
-			z-index: 10000;
-			text-align: center;
-			border: 2px solid #ff7675;
-			max-width: 400px;
-			font-family: Arial, sans-serif;
-			box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
-		`;
-		errorMsg.innerHTML = `
-			<h3 style="margin: 0 0 15px 0; color: white;">⚠️ Error de Carga</h3>
-			<p style="margin: 0 0 20px 0; line-height: 1.4;">${message}</p>
-			<div style="margin-top: 15px;">
-				<button onclick="location.reload()" style="padding: 10px 20px; background: white; color: red; border: none; border-radius: 5px; cursor: pointer; margin-right: 10px; font-weight: bold;">
-					🔄 Recargar
-				</button>
-				<button onclick="this.parentElement.parentElement.remove()" style="padding: 10px 20px; background: #ff7675; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold;">
-					❌ Cerrar
-				</button>
-			</div>
-		`;
-		document.body.appendChild(errorMsg);
-	}
-
-	// =============================================
-	// INICIALIZACIÓN COMPLETA
+	// INICIALIZACIÓN
 	// =============================================
 	window.addEventListener('load', function() {
-		console.log("🏠 home.html completamente cargado con Firebase Realtime");
+		console.log("🏠 home.html completamente cargado");
 		
-		// Inicializar sistemas
-		setTimeout(verifyInterceptionSystem, 1000);
-		setTimeout(handleFlashErrors, 5000);
+		// Forzar carga después de un delay
 		setTimeout(forceGameLoad, 2000);
+		
+		// Verificar que el interceptor está funcionando
+		setTimeout(() => {
+			console.log('🔧 Estado del interceptor: ACTIVO');
+			console.log('✅ Todas las peticiones record_stats serán interceptadas');
+			console.log('✅ 127.0.0.1record_stats.php será manejado');
+		}, 1000);
 	});
 
 	// Timeout de seguridad
 	setTimeout(() => {
 		const loadingScreen = document.getElementById('loading_game');
 		if (loadingScreen && loadingScreen.style.display !== 'none') {
-			console.log("⚠️ Forzando cierre de pantalla de carga después de timeout");
+			console.log("⚠️ Forzando cierre de pantalla de carga");
 			loadingScreen.style.display = 'none';
 			showGameReadyMessage();
 		}
 	}, 10000);
 
-	console.log("🎯 Sistema de Firebase Realtime e interceptación integrado en home.html");
+	console.log("🎯 Sistema de interceptación MEJORADO integrado");
 	</script>
 </body>
 </html>
