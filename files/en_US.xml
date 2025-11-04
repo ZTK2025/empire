@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<resources>
+    <string id="loading">Loading Empire &amp; Allies...</string>
+    <string id="error">Error loading game assets</string>
+    <string id="connection_lost">Connection to server lost</string>
+    <string id="retry">Retry</string>
+    <string id="play">Play</string>
+    <string id="menu">Menu</string>
+    <string id="settings">Settings</string>
+    <string id="tutorial_welcome">Welcome to Empire &amp; Allies</string>
+    <string id="building">Building</string>
+    <string id="resources">Resources</string>
+    <string id="gold">Gold</string>
+    <string id="oil">Oil</string>
+    <string id="soldiers">Soldiers</string>
+    <string id="level">Level</string>
+</resources>
