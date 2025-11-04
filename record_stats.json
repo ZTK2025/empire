@@ -1,5 +1,7 @@
 {
-    "status": "success",
-    "message": "Stats recorded successfully",
-    "timestamp": 1762231499
+    "status": "success", 
+    "message": "Game statistics recorded successfully",
+    "timestamp": 1762231499,
+    "player": "ZTK",
+    "version": "1.0.0"
 }
