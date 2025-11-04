@@ -1,633 +1,597 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-	<meta charset="utf-8"/>
-	<title id="pageTitle">Empires &amp; Allies</title>
-	<link rel="shortcut icon" href="img/icon.png"/>
-	<link rel="icon" type="image/png" href="img/icon.png"/>
-	<link rel="stylesheet" href="css/facebook.css"/>
-	<link rel="stylesheet" href="css/buttons.css"/>
-	<link rel="stylesheet" href="css/tooltiplink.css"/>
-	<link rel="stylesheet" href="css/zbar.css"/>
-	
-	<!-- FIREBASE COMPLETO -->
-	<script src="//code.jquery.com/jquery-3.4.1.min.js"></script>
-	<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
-	<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
-	<script src="firebase/firebase-config.js"></script>
-	<script src="firebase/profiles.js"></script>
-	<script src="firebase/socket-realtime.js"></script>
-	
-	<script src="js/flash.js"></script>
-	<script src="js/session.js"></script>
-	<script src="js/empires.js"></script>
-	
-	<style>
-		#firebase-profile-panel {
-			position: fixed;
-			top: 80px;
-			left: 15px;
-			background: rgba(0, 0, 0, 0.9);
-			color: white;
-			padding: 15px;
-			border-radius: 10px;
-			z-index: 9999;
-			font-family: Arial, sans-serif;
-			font-size: 14px;
-			border: 2px solid #00b894;
-			min-width: 220px;
-			box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
-			backdrop-filter: blur(10px);
-		}
-		
-		#firebase-profile-panel h4 {
-			color: #00b894;
-			margin: 0 0 10px 0;
-			border-bottom: 1px solid #00b894;
-			padding-bottom: 8px;
-			font-size: 16px;
-		}
-		
-		.firebase-stats {
-			margin-bottom: 10px;
-		}
-		
-		.firebase-stat-row {
-			display: flex;
-			justify-content: space-between;
-			margin-bottom: 4px;
-		}
-		
-		.firebase-buttons {
-			display: flex;
-			gap: 5px;
-			justify-content: space-between;
-		}
-		
-		.firebase-btn {
-			background: #00b894;
-			color: white;
-			border: none;
-			padding: 8px 12px;
-			border-radius: 5px;
-			cursor: pointer;
-			font-size: 12px;
-			flex: 1;
-		}
-		
-		.firebase-btn-menu {
-			background: #636e72;
-		}
-		
-		.firebase-notification {
-			position: fixed;
-			top: 50%;
-			left: 50%;
-			transform: translate(-50%, -50%);
-			background: rgba(0, 0, 0, 0.95);
-			color: white;
-			padding: 20px 30px;
-			border-radius: 10px;
-			z-index: 10001;
-			font-family: Arial, sans-serif;
-			border: 2px solid #00b894;
-			font-size: 16px;
-			text-align: center;
-			box-shadow: 0 4px 20px rgba(0, 0, 0, 0.7);
-		}
-	</style>
-	
-	<script>
-		let currentFirebaseProfile = null;
-		let profileSystem = null;
-		
-		// DECLARAR saveGameProgress PRIMERO para evitar el error
-		async function saveGameProgress() {
-			if (!currentFirebaseProfile || !profileSystem) {
-				showNotification('❌ No hay perfil activo');
-				return;
-			}
-			
-			try {
-				const gameData = {
-					level: currentFirebaseProfile.level || 1,
-					gold: (currentFirebaseProfile.gold || 500) + Math.floor(Math.random() * 50),
-					oil: (currentFirebaseProfile.oil || 500) + Math.floor(Math.random() * 25),
-					soldiers: (currentFirebaseProfile.soldiers || 50) + Math.floor(Math.random() * 5),
-					lastSaved: new Date().toLocaleString('es-ES')
-				};
-				
-				await profileSystem.updateProfile(currentFirebaseProfile.id, gameData);
-				
-				const updatedProfile = { ...currentFirebaseProfile, ...gameData };
-				profileSystem.selectProfile(updatedProfile);
-				currentFirebaseProfile = updatedProfile;
-				
-				showFirebaseProfilePanel(updatedProfile);
-				showNotification('✅ Progreso guardado en Firebase');
-				
-			} catch (error) {
-				console.error('❌ Error saving progress:', error);
-				showNotification('❌ Error al guardar progreso');
-			}
-		}
-		
-		function showNotification(message) {
-			const existingNotification = document.querySelector('.firebase-notification');
-			if (existingNotification) {
-				existingNotification.remove();
-			}
-			
-			const notification = document.createElement('div');
-			notification.className = 'firebase-notification';
-			notification.textContent = message;
-			document.body.appendChild(notification);
-			
-			setTimeout(() => {
-				if (notification.parentNode) {
-					notification.remove();
-				}
-			}, 2000);
-		}
-		
-		function initializeFirebase() {
-			try {
-				profileSystem = new ProfileSystem();
-				const profile = profileSystem.getSelectedProfile();
-				
-				if (!profile) {
-					console.log("❌ No Firebase profile found, redirecting to index...");
-					setTimeout(() => {
-						window.location.href = 'index.html';
-					}, 3000);
-					return;
-				}
-				
-				currentFirebaseProfile = profile;
-				console.log("✅ Firebase profile loaded:", profile.name);
-				showFirebaseProfilePanel(profile);
-				
-				// Configurar el intervalo después de que saveGameProgress esté definido
-				setInterval(saveGameProgress, 120000);
-				
-			} catch (error) {
-				console.error("❌ Error initializing Firebase:", error);
-			}
-		}
-		
-		function showFirebaseProfilePanel(profile) {
-			const existingPanel = document.getElementById('firebase-profile-panel');
-			if (existingPanel) {
-				existingPanel.remove();
-			}
-			
-			const panel = document.createElement('div');
-			panel.id = 'firebase-profile-panel';
-			panel.innerHTML = `
-				<h4>🎖️ ${profile.name}</h4>
-				<div class="firebase-stats">
-					<div class="firebase-stat-row">
-						<span>Nivel:</span>
-						<span style="color: #ffeaa7;">${profile.level || 1}</span>
-					</div>
-					<div class="firebase-stat-row">
-						<span>Oro:</span>
-						<span style="color: gold;">${profile.gold || 500} ⭐</span>
-					</div>
-					<div class="firebase-stat-row">
-						<span>Petróleo:</span>
-						<span style="color: #ff7675;">${profile.oil || 500} ⛽</span>
-					</div>
-					<div class="firebase-stat-row">
-						<span>Soldados:</span>
-						<span style="color: #74b9ff;">${profile.soldiers || 50} 💂</span>
-					</div>
-				</div>
-				<div class="firebase-buttons">
-					<button class="firebase-btn" onclick="saveGameProgress()">💾 Guardar</button>
-					<button class="firebase-btn firebase-btn-menu" onclick="goToMainMenu()">🏠 Menú</button>
-				</div>
-			`;
-			
-			document.body.appendChild(panel);
-		}
-		
-		function goToMainMenu() {
-			if (confirm('¿Volver al menú principal?\n\nTu progreso se guardará automáticamente.')) {
-				saveGameProgress();
-				setTimeout(() => {
-					window.location.href = 'index.html';
-				}, 1000);
-			}
-		}
+    <meta charset="utf-8"/>
+    <title id="pageTitle">Empires &amp; Allies</title>
+    <link rel="shortcut icon" href="img/icon.png"/>
+    <link rel="icon" type="image/png" href="img/icon.png"/>
+    <link rel="stylesheet" href="css/facebook.css"/>
+    <link rel="stylesheet" href="css/buttons.css"/>
+    <link rel="stylesheet" href="css/tooltiplink.css"/>
+    <link rel="stylesheet" href="css/zbar.css"/>
+    
+    <!-- FIREBASE COMPLETO -->
+    <script src="//code.jquery.com/jquery-3.4.1.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+    <script src="firebase/firebase-config.js"></script>
+    <script src="firebase/profiles.js"></script>
+    <script src="firebase/socket-realtime.js"></script>
+    
+    <script src="js/flash.js"></script>
+    <script src="js/session.js"></script>
+    <script src="js/empires.js"></script>
+    
+    <style>
+        #firebase-profile-panel {
+            position: fixed;
+            top: 80px;
+            left: 15px;
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            z-index: 9999;
+            font-family: Arial, sans-serif;
+            font-size: 14px;
+            border: 2px solid #00b894;
+            min-width: 220px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(10px);
+        }
+        
+        #firebase-profile-panel h4 {
+            color: #00b894;
+            margin: 0 0 10px 0;
+            border-bottom: 1px solid #00b894;
+            padding-bottom: 8px;
+            font-size: 16px;
+        }
+        
+        .firebase-stats {
+            margin-bottom: 10px;
+        }
+        
+        .firebase-stat-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 4px;
+        }
+        
+        .firebase-buttons {
+            display: flex;
+            gap: 5px;
+            justify-content: space-between;
+        }
+        
+        .firebase-btn {
+            background: #00b894;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+            flex: 1;
+        }
+        
+        .firebase-btn-menu {
+            background: #636e72;
+        }
+        
+        .firebase-notification {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.95);
+            color: white;
+            padding: 20px 30px;
+            border-radius: 10px;
+            z-index: 10001;
+            font-family: Arial, sans-serif;
+            border: 2px solid #00b894;
+            font-size: 16px;
+            text-align: center;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.7);
+        }
+    </style>
+    
+    <script>
+        let currentFirebaseProfile = null;
+        let profileSystem = null;
+        
+        async function saveGameProgress() {
+            if (!currentFirebaseProfile || !profileSystem) {
+                showNotification('❌ No hay perfil activo');
+                return;
+            }
+            
+            try {
+                const gameData = {
+                    level: currentFirebaseProfile.level || 1,
+                    gold: (currentFirebaseProfile.gold || 500) + Math.floor(Math.random() * 50),
+                    oil: (currentFirebaseProfile.oil || 500) + Math.floor(Math.random() * 25),
+                    soldiers: (currentFirebaseProfile.soldiers || 50) + Math.floor(Math.random() * 5),
+                    lastSaved: new Date().toLocaleString('es-ES')
+                };
+                
+                await profileSystem.updateProfile(currentFirebaseProfile.id, gameData);
+                
+                const updatedProfile = { ...currentFirebaseProfile, ...gameData };
+                profileSystem.selectProfile(updatedProfile);
+                currentFirebaseProfile = updatedProfile;
+                
+                showFirebaseProfilePanel(updatedProfile);
+                showNotification('✅ Progreso guardado en Firebase');
+                
+            } catch (error) {
+                console.error('❌ Error saving progress:', error);
+                showNotification('❌ Error al guardar progreso');
+            }
+        }
+        
+        function showNotification(message) {
+            const existingNotification = document.querySelector('.firebase-notification');
+            if (existingNotification) {
+                existingNotification.remove();
+            }
+            
+            const notification = document.createElement('div');
+            notification.className = 'firebase-notification';
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.remove();
+                }
+            }, 2000);
+        }
+        
+        function initializeFirebase() {
+            try {
+                profileSystem = new ProfileSystem();
+                const profile = profileSystem.getSelectedProfile();
+                
+                if (!profile) {
+                    console.log("❌ No Firebase profile found, redirecting to index...");
+                    setTimeout(() => {
+                        window.location.href = 'index.html';
+                    }, 3000);
+                    return;
+                }
+                
+                currentFirebaseProfile = profile;
+                console.log("✅ Firebase profile loaded:", profile.name);
+                showFirebaseProfilePanel(profile);
+                
+                setInterval(saveGameProgress, 120000);
+                
+            } catch (error) {
+                console.error("❌ Error initializing Firebase:", error);
+            }
+        }
+        
+        function showFirebaseProfilePanel(profile) {
+            const existingPanel = document.getElementById('firebase-profile-panel');
+            if (existingPanel) {
+                existingPanel.remove();
+            }
+            
+            const panel = document.createElement('div');
+            panel.id = 'firebase-profile-panel';
+            panel.innerHTML = `
+                <h4>🎖️ ${profile.name}</h4>
+                <div class="firebase-stats">
+                    <div class="firebase-stat-row">
+                        <span>Nivel:</span>
+                        <span style="color: #ffeaa7;">${profile.level || 1}</span>
+                    </div>
+                    <div class="firebase-stat-row">
+                        <span>Oro:</span>
+                        <span style="color: gold;">${profile.gold || 500} ⭐</span>
+                    </div>
+                    <div class="firebase-stat-row">
+                        <span>Petróleo:</span>
+                        <span style="color: #ff7675;">${profile.oil || 500} ⛽</span>
+                    </div>
+                    <div class="firebase-stat-row">
+                        <span>Soldados:</span>
+                        <span style="color: #74b9ff;">${profile.soldiers || 50} 💂</span>
+                    </div>
+                </div>
+                <div class="firebase-buttons">
+                    <button class="firebase-btn" onclick="saveGameProgress()">💾 Guardar</button>
+                    <button class="firebase-btn firebase-btn-menu" onclick="goToMainMenu()">🏠 Menú</button>
+                </div>
+            `;
+            
+            document.body.appendChild(panel);
+        }
+        
+        function goToMainMenu() {
+            if (confirm('¿Volver al menú principal?\n\nTu progreso se guardará automáticamente.')) {
+                saveGameProgress();
+                setTimeout(() => {
+                    window.location.href = 'index.html';
+                }, 1000);
+            }
+        }
 
-		function getUserInfo() {
-			console.log("getUserInfo called");
-			
-			if (typeof inner_getUserInfo === 'function') {
-				inner_getUserInfo();
-			}
-			
-			if (currentFirebaseProfile) {
-				console.log("🔥 getUserInfo usando datos de Firebase");
-				return {
-					'zid': currentFirebaseProfile.id || 6582090459255810,
-					'uid': currentFirebaseProfile.id || 6582090459255810,
-					'first_name': currentFirebaseProfile.name || "Comandante",
-					'name': currentFirebaseProfile.name || "Comandante",
-					"sex": 'M',
-					'pic_square': 'img/avatars/blank.png',
-					'level': currentFirebaseProfile.level || 1,
-					'resources': currentFirebaseProfile.resources || 1000,
-					'gold': currentFirebaseProfile.gold || 500,
-					'oil': currentFirebaseProfile.oil || 500
-				};
-			}
-			
-			console.log("⚠️ getUserInfo usando datos locales");
-			return {
-				'zid': 6582090459255810,
-				'uid': 6582090459255810,
-				'first_name': "Emperor",
-				'name': "Emperor",
-				"sex": 'F',
-				'pic_square': 'img/avatars/blank.png'
-			};
-		}
+        function getUserInfo() {
+            console.log("getUserInfo called");
+            
+            if (typeof inner_getUserInfo === 'function') {
+                inner_getUserInfo();
+            }
+            
+            if (currentFirebaseProfile) {
+                console.log("🔥 getUserInfo usando datos de Firebase");
+                return {
+                    'zid': currentFirebaseProfile.id || 6582090459255810,
+                    'uid': currentFirebaseProfile.id || 6582090459255810,
+                    'first_name': currentFirebaseProfile.name || "Comandante",
+                    'name': currentFirebaseProfile.name || "Comandante",
+                    "sex": 'M',
+                    'pic_square': 'img/avatars/blank.png',
+                    'level': currentFirebaseProfile.level || 1,
+                    'resources': currentFirebaseProfile.resources || 1000,
+                    'gold': currentFirebaseProfile.gold || 500,
+                    'oil': currentFirebaseProfile.oil || 500
+                };
+            }
+            
+            console.log("⚠️ getUserInfo usando datos locales");
+            return {
+                'zid': 6582090459255810,
+                'uid': 6582090459255810,
+                'first_name': "Emperor",
+                'name': "Emperor",
+                "sex": 'F',
+                'pic_square': 'img/avatars/blank.png'
+            };
+        }
 
-		function getFriendData() {
-			console.log("getFriendData called");
-			if (typeof inner_getFriendData === 'function') {
-				inner_getFriendData();
-			}
-			return [
-  {
-    "zid": 123,
-    "uid": 123,
-    "first_name": "Natalie",
-    "name": "Natalie Portman",
-    "sex": "F",
-    "portrait": "assets/game/GeneralAssetGroup_UI.swf/TheVille_50.png",
-    "pic": "assets/game/GeneralAssetGroup_UI.swf/TheVille_50.png",
-    "pic_square": "assets/game/GeneralAssetGroup_UI.swf/TheVille_50.png"
-  }
-			];
-		}
+        function getFriendData() {
+            console.log("getFriendData called");
+            if (typeof inner_getFriendData === 'function') {
+                inner_getFriendData();
+            }
+            return [
+                {
+                    "zid": 123,
+                    "uid": 123,
+                    "first_name": "Natalie",
+                    "name": "Natalie Portman",
+                    "sex": "F",
+                    "portrait": "assets/game/GeneralAssetGroup_UI.swf/TheVille_50.png",
+                    "pic": "assets/game/GeneralAssetGroup_UI.swf/TheVille_50.png",
+                    "pic_square": "assets/game/GeneralAssetGroup_UI.swf/TheVille_50.png"
+                }
+            ];
+        }
 
-		function getAppFriendIds() {
-			console.log("getAppFriendIds called");
-			if (typeof inner_getAppFriendIds === 'function') {
-				inner_getAppFriendIds();
-			}
-			return [123, 124, 131];
-		}
+        function getAppFriendIds() {
+            console.log("getAppFriendIds called");
+            if (typeof inner_getAppFriendIds === 'function') {
+                inner_getAppFriendIds();
+            }
+            return [123, 124, 131];
+        }
 
-		function onGameLoaded(seen, popp, canvas) {
-			console.log("🎮 Game is loaded " + seen + ", " + popp + ", " + canvas);
-			
-			if (typeof inner_onGameLoaded === 'function') {
-				inner_onGameLoaded();
-			} else {
-				console.log("ℹ️ inner_onGameLoaded no está definido, continuando...");
-			}
-			
-			setTimeout(() => {
-				const loadingScreen = document.getElementById('loading_game');
-				if (loadingScreen) {
-					loadingScreen.style.display = 'none';
-					console.log("✅ Pantalla de carga ocultada - Juego cargado");
-				}
-			}, 2000);
-			
-			return;
-		}
-		
-		window.addEventListener('DOMContentLoaded', function() {
-			setTimeout(initializeFirebase, 1000);
-		});
-	</script>
+        function onGameLoaded(seen, popp, canvas) {
+            console.log("🎮 Game is loaded " + seen + ", " + popp + ", " + canvas);
+            
+            if (typeof inner_onGameLoaded === 'function') {
+                inner_onGameLoaded();
+            } else {
+                console.log("ℹ️ inner_onGameLoaded no está definido, continuando...");
+            }
+            
+            setTimeout(() => {
+                const loadingScreen = document.getElementById('loading_game');
+                if (loadingScreen) {
+                    loadingScreen.style.display = 'none';
+                    console.log("✅ Pantalla de carga ocultada - Juego cargado");
+                }
+            }, 2000);
+            
+            return;
+        }
+        
+        window.addEventListener('DOMContentLoaded', function() {
+            setTimeout(initializeFirebase, 1000);
+        });
+    </script>
 </head>
 <body class="ego_wide canvas center_fixed_width_app fbx UIPage_LoggedOut liquid hideBanner Locale_en_US">
-	<!-- TOP BANNER -->
-	<div class="-cx-PRIVATE-fbLayout__root">
-	  	<div id="pagelet_bluebar" data-referrer="pagelet_bluebar">
-	  			<div id="blueBarHolder">
-	  			<div id="blueBar">
-					<div class="loggedout_menubar_container">
-						<div class="clearfix loggedout_menubar">
-							<a class="lfloat" href="/" title="Go to Facebook Home">
-								<i class="fb_logo img sp_e2gpgs sx_584554">
-									<u>Facebook logo</u>
-								</i>
-							</a>
-							<ul class="rfloat" style="color:#fff;">
-								<li style="margin-right: 7px;">
-									<ul class="dropdownUser">
-										<li><a href="#" onclick="newPlayer(); return false">New player</a><li>
-										<li>
-											<a href="#" onclick="changeSession(&quot;session:example&quot;); return false">
-												<div style="position:relative; display: inline-block; vertical-align: top; text-align: left;">
-													<p style="margin-top:8px;">Survival template </p>
-												</div>
-												<div style="position:relative; text-align:center; display: inline-block;" title="236014 xp">
-													<img src="img/xp.png" style="width:30px;"> 
-													<div style="position:absolute; top:40%; left:50%; transform: translate(-50%, -50%); color:black;">
-														85
-													</div>
-												</div>
-											</a>
-										</li>
-									</ul>
-								</li>
-								<a class="uiButton uiButtonConfirm" href="#" onclick="logout(); return false" role="button" name="try_again_button">
-									<span class="uiButtonText">Logout</span>
-								</a>
-								<a class="inputaux uiButton" href="save-editor" role="button">
-									<span class="uiButtonText">Edit Empire</span>
-								</a>
-							</ul>
-						</div>
-					</div>
-	  				<div class="signupBanner">
-	  					<div class="signup_bar_container">
-	  						<div class="signup_box clearfix">
-			  				</div>
-			  			</div>
-			  		</div>
-			  	</div>
-	  		</div>
-		</div>
-	</div>
-	<!-- PAGE BODY -->
-	<div id="globalContainer" class="uiContextualLayerParent">
-		<div id="content" class="fb_content clearfix">
-			<div>
-				<div id="mainContainer">
-					<div id="contentCol" class="clearfix">
-						<div id="contentArea" role="main" aria-describedby="pageTitle">
-							<center style="margin-top: 37px;">
-								<div class="zBar" id="zBar">
-									<div style="display: inline-block; float: left; width: 315px; height:105px;"></div>
-									<div style="float: left; height:97px; padding: 4px;">
-										<a title="Empires & Allies Wiki" href="https://empiresandallies.fandom.com/wiki/Empires_%26_Allies_Wiki/Main_2" target="_blank"><div class="zBarButtons" id="zBarButtons" style="background-image: url('img/fandom.png');"></div></a>
-										<a title="Discord group" href="https://discord.gg/xrNE6Hg" target="_blank"><div class="zBarButtons" id="zBarButtons" style="background-image: url('img/discord.png');"></div></a>
-										<a title="Github repository" href="https://github.com/AcidCaos/raisetheempires#readme" target="_blank"><div class="zBarButtons" id="zBarButtons" style="background-image: url('img/github.png');"></div></a>
-										<a title="Termux/GNU/Linux version" href="https://github.com/Questandachievement7Developer/RaiseTheEmpiresPort_Native" target="_blank"><div class="zBarButtons" id="zBarButtons" style="background-image: url('img/termux.png');"></div></a>
-										<!-- VERSION -->
-										<br><br>
-										<p style="display: inline">Raise the Empires 0.08a.2023_04_28</p>
-									</div>
-									<div style="float: right; height:97px; padding: 4px;">
-										<!-- zbar column 3 content here-->
-										<img class="rewardVilleLogo" src="img/RewardVilleLogo.png" style="vertical-align: bottom; display: inline; margin-top: 53px;">
-									</div>
-									<div style="float: right; height:97px; padding: 4px; display: flex;">
-										<!-- zbar column 2 content here-->
-										<img src="img/Zcoins.png" style="align-self:flex-end">							
-									</div>
-								</div>
-							</center>
-							<center>
-								<div style="text-align: center; width:1010px;">
-									<div class="gameButtons" id="gameButtons" style=" margin-bottom:4px; margin-left: 5px; text-align: left; height:20px; padding-top: 4px;">
-										<a href="#" class="unsel">Free Gifts</a>
-										<a href="#" class="selec">Play</a>
-										<a href="/friends.html" class="unsel">My Neighbors</a>
-										<a href="#" class="unsel">Invite Friends</a>
-										<a title="Check the Empires & Allies Wiki" href="https://empiresandallies.fandom.com/wiki/Empires_%26_Allies_Wiki/Main_2" class="unsel">Help</a>
-										<a title="Adds 10k Empire Points" href="/gazillionaire" class="unsel">Get Empire Points</a>
-										<a href="#" class="unsel">Earn Empire Points</a>
-										<a href="#" class="unsel">GameCards</a>
-										<a href="#" style="display:inline; float:right; padding-top: 0px;"><img src="img/globe.png" style="height:25px"></a>
-									</div>
-								</div>
-								<div>
-									<div style="margin:10px"></div>
-									<div style="position: relative; width: 1000px; min-height: 750px; margin: 0; padding: 0; border: 0;">
-										<div id="game_object" style="width: 1000px; min-height: 750px; display: inline-block; margin: 0; padding: 0; border: 0;">
-											<object codebase="http://download.macromedia.com/pub/shockwave/cabs/flash/swflash.cab#version=6,0,0,0" WIDTH="1000" HEIGHT="750" id="ea" ALIGN="">
-												<!-- RUTA CORREGIDA CON PARÁMETROS ACTUALIZADOS -->
-												<param NAME=movie VALUE="files/ZGame.109338_tracer2.swf">
-												<param name=FlashVars value="serverTime=1761716794.63979&is_staging=true&debugMode=true&generateSchema=1&sn_app_url=&stats=1&baseURL=./&assetsURL=files/&configURL=./&localURL=./&gameID=empires">
-												<param NAME=quality VALUE=high>
-												<param NAME=bgcolor VALUE=#333399>
-												<param name="allowFullScreen" value="true" />
-												<!-- RUTA CORREGIDA CON PARÁMETROS ACTUALIZADOS -->
-												<embed id="game_embed" src="files/ZGame.109338_tracer2.swf" allowFullScreen="true" FlashVars="serverTime=1761716794.63979&is_staging=true&debugMode=true&generateSchema=1&sn_app_url=&stats=1&baseURL=./&assetsURL=files/&configURL=./&localURL=./&gameID=empires" quality=high bgcolor="#333399" WIDTH="1000" HEIGHT="750" NAME="ea" ALIGN="" TYPE="application/x-shockwave-flash" PLUGINSPAGE="http://www.macromedia.com/go/getflashplayer">
-												</embed>
-											</object>
-										</div>
-										<!-- Loading game div is rendered on top of the flash object. -->
-										<div id="loading_game" style="position: absolute; top: 0; left: 0; width:1000px; height:750px; background-color: white;">
-											<div name="motd" style="width:750px; height:500px; display: inline-block; margin: 0; padding: 0; border: 0;  background-image: url('img/loading_frame_remastered.png'); background-size: cover; background-position: center; background-repeat: no-repeat; background-clip: border-box; margin-top: 100px; box-shadow: inset 0px -30px 70px 50px #000;">
-												<div name="EA_frame" style="width:750px; height:690px; display: inline-block; margin: 0; padding: 0; border: 0; background-image: url('img/loading_frame_remastered.png'); background-size: contain; background-position: center; background-repeat: no-repeat; margin-top: -100px;">
-													<center style="padding-top: 460px; width: 570px; margin: 0; border: 0;">
-														<br>
-														<p id="loading_message" style="font-size: 30px; color: white; text-shadow: 0px 0px 6px black; margin-bottom: 15px;">
-															Cargando Empire & Allies...<br>
-															<small style="font-size: 16px;">Firebase Realtime ✅</small>
-														</p>											
-														<div id="progress_bar" style="display: flex; width: 45%; height: 18px; border-radius: 10px; overflow: hidden; background-color: #6d5554; box-shadow: inset 0px 4px 9px -1px #4c4635;"> 
-															<div id="inner_progress_bar" style="width: 0%; background-color: #e6b104; box-shadow: inset 0px 4px 9px -1px #fae361; transition: width 1s linear;"></div>
-														</div>
-													</center>
-													<div style="width: 750px; position: absolute; top: 0; padding-top: 280px;">
-														<center>
-															<div id="flash_enabler" style="width: 300px;">
-																<!-- Fake Flash object to trigger flash enable popup -->
-																<object codebase="http://download.macromedia.com/pub/shockwave/cabs/flash/swflash.cab#version=6,0,0,0" width=300>
-																	<embed id="game_embed" WMODE="transparent" bgcolor="white" TYPE="application/x-shockwave-flash" PLUGINSPAGE="http://www.macromedia.com/go/getflashplayer" width=300>
-																	</embed>
-																</object>
-															</div>
-														</center>
-													</div>
-												</div>
-											</div>
-										</div>
-										<script type="text/javascript" charset="utf-8">
-											loadingScreenUpdate()
-										</script>
-									</div>
-								</div>
-							</center>
-						</div>
-						<div style="margin: 30px"></div>
-						<div class="uiInterstitialBar uiBoxGray topborder">
-							<center>
-								<h3 style="display: inline;">Debug Panel</h3>
-								<p style="display: inline;">~</p>
-								<a href="nodebug.html">No debug mode</a>
-							</center>
-							<br>
-							<div class="clearfix">
-								<center><table style="border: 1px solid #3b5998; border-radius: 5px;">
-									<tr>
-										<td><div class="logbox" id="tutorial_step">&nbsp;</div></td>
-										<td><div class="logbox" id="world_log">&nbsp;</div></td>
-										<td><div class="logbox" id="other_log">&nbsp;</div></td>
-									</tr>
-								</table></center>
-								<center>
-									<p style="color: #666699;"> <br>
-									The Raise the Empires team. Empires &amp; Allies 0.08a.2023_04_28
-									</p>
-								</center>
-							</div>
-						</div>
-					</div>
-				</div>
-			</div>
-		</div>
-	</div>
+    <!-- TOP BANNER -->
+    <div class="-cx-PRIVATE-fbLayout__root">
+        <div id="pagelet_bluebar" data-referrer="pagelet_bluebar">
+                <div id="blueBarHolder">
+                <div id="blueBar">
+                    <div class="loggedout_menubar_container">
+                        <div class="clearfix loggedout_menubar">
+                            <a class="lfloat" href="/" title="Go to Facebook Home">
+                                <i class="fb_logo img sp_e2gpgs sx_584554">
+                                    <u>Facebook logo</u>
+                                </i>
+                            </a>
+                            <ul class="rfloat" style="color:#fff;">
+                                <li style="margin-right: 7px;">
+                                    <ul class="dropdownUser">
+                                        <li><a href="#" onclick="newPlayer(); return false">New player</a><li>
+                                        <li>
+                                            <a href="#" onclick="changeSession(&quot;session:example&quot;); return false">
+                                                <div style="position:relative; display: inline-block; vertical-align: top; text-align: left;">
+                                                    <p style="margin-top:8px;">Survival template </p>
+                                                </div>
+                                                <div style="position:relative; text-align:center; display: inline-block;" title="236014 xp">
+                                                    <img src="img/xp.png" style="width:30px;"> 
+                                                    <div style="position:absolute; top:40%; left:50%; transform: translate(-50%, -50%); color:black;">
+                                                        85
+                                                    </div>
+                                                </div>
+                                            </a>
+                                        </li>
+                                    </ul>
+                                </li>
+                                <a class="uiButton uiButtonConfirm" href="#" onclick="logout(); return false" role="button" name="try_again_button">
+                                    <span class="uiButtonText">Logout</span>
+                                </a>
+                                <a class="inputaux uiButton" href="save-editor" role="button">
+                                    <span class="uiButtonText">Edit Empire</span>
+                                </a>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="signupBanner">
+                        <div class="signup_bar_container">
+                            <div class="signup_box clearfix">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- PAGE BODY -->
+    <div id="globalContainer" class="uiContextualLayerParent">
+        <div id="content" class="fb_content clearfix">
+            <div>
+                <div id="mainContainer">
+                    <div id="contentCol" class="clearfix">
+                        <div id="contentArea" role="main" aria-describedby="pageTitle">
+                            <center style="margin-top: 37px;">
+                                <div class="zBar" id="zBar">
+                                    <div style="display: inline-block; float: left; width: 315px; height:105px;"></div>
+                                    <div style="float: left; height:97px; padding: 4px;">
+                                        <a title="Empires & Allies Wiki" href="https://empiresandallies.fandom.com/wiki/Empires_%26_Allies_Wiki/Main_2" target="_blank"><div class="zBarButtons" id="zBarButtons" style="background-image: url('img/fandom.png');"></div></a>
+                                        <a title="Discord group" href="https://discord.gg/xrNE6Hg" target="_blank"><div class="zBarButtons" id="zBarButtons" style="background-image: url('img/discord.png');"></div></a>
+                                        <a title="Github repository" href="https://github.com/AcidCaos/raisetheempires#readme" target="_blank"><div class="zBarButtons" id="zBarButtons" style="background-image: url('img/github.png');"></div></a>
+                                        <a title="Termux/GNU/Linux version" href="https://github.com/Questandachievement7Developer/RaiseTheEmpiresPort_Native" target="_blank"><div class="zBarButtons" id="zBarButtons" style="background-image: url('img/termux.png');"></div></a>
+                                        <br><br>
+                                        <p style="display: inline">Raise the Empires 0.08a.2023_04_28</p>
+                                    </div>
+                                    <div style="float: right; height:97px; padding: 4px;">
+                                        <img class="rewardVilleLogo" src="img/RewardVilleLogo.png" style="vertical-align: bottom; display: inline; margin-top: 53px;">
+                                    </div>
+                                    <div style="float: right; height:97px; padding: 4px; display: flex;">
+                                        <img src="img/Zcoins.png" style="align-self:flex-end">                            
+                                    </div>
+                                </div>
+                            </center>
+                            <center>
+                                <div style="text-align: center; width:1010px;">
+                                    <div class="gameButtons" id="gameButtons" style=" margin-bottom:4px; margin-left: 5px; text-align: left; height:20px; padding-top: 4px;">
+                                        <a href="#" class="unsel">Free Gifts</a>
+                                        <a href="#" class="selec">Play</a>
+                                        <a href="/friends.html" class="unsel">My Neighbors</a>
+                                        <a href="#" class="unsel">Invite Friends</a>
+                                        <a title="Check the Empires & Allies Wiki" href="https://empiresandallies.fandom.com/wiki/Empires_%26_Allies_Wiki/Main_2" class="unsel">Help</a>
+                                        <a title="Adds 10k Empire Points" href="/gazillionaire" class="unsel">Get Empire Points</a>
+                                        <a href="#" class="unsel">Earn Empire Points</a>
+                                        <a href="#" class="unsel">GameCards</a>
+                                        <a href="#" style="display:inline; float:right; padding-top: 0px;"><img src="img/globe.png" style="height:25px"></a>
+                                    </div>
+                                </div>
+                                <div>
+                                    <div style="margin:10px"></div>
+                                    <div style="position: relative; width: 1000px; min-height: 750px; margin: 0; padding: 0; border: 0;">
+                                        <div id="game_object" style="width: 1000px; min-height: 750px; display: inline-block; margin: 0; padding: 0; border: 0;">
+                                            <object codebase="http://download.macromedia.com/pub/shockwave/cabs/flash/swflash.cab#version=6,0,0,0" WIDTH="1000" HEIGHT="750" id="ea" ALIGN="">
+                                                <param NAME=movie VALUE="files/ZGame.109338_tracer2.swf">
+                                                <param name=FlashVars value="serverTime=1761716794.63979&is_staging=true&debugMode=true&generateSchema=1&sn_app_url=&stats=1&baseURL=./&assetsURL=files/&configURL=./&localURL=./&gameID=empires&externalConfig=false&overrideURLs=true">
+                                                <param NAME=quality VALUE=high>
+                                                <param NAME=bgcolor VALUE=#333399>
+                                                <param name="allowFullScreen" value="true" />
+                                                <embed id="game_embed" src="files/ZGame.109338_tracer2.swf" allowFullScreen="true" FlashVars="serverTime=1761716794.63979&is_staging=true&debugMode=true&generateSchema=1&sn_app_url=&stats=1&baseURL=./&assetsURL=files/&configURL=./&localURL=./&gameID=empires&externalConfig=false&overrideURLs=true" quality=high bgcolor="#333399" WIDTH="1000" HEIGHT="750" NAME="ea" ALIGN="" TYPE="application/x-shockwave-flash" PLUGINSPAGE="http://www.macromedia.com/go/getflashplayer">
+                                                </embed>
+                                            </object>
+                                        </div>
+                                        <!-- Loading game div is rendered on top of the flash object. -->
+                                        <div id="loading_game" style="position: absolute; top: 0; left: 0; width:1000px; height:750px; background-color: white;">
+                                            <div name="motd" style="width:750px; height:500px; display: inline-block; margin: 0; padding: 0; border: 0;  background-image: url('img/loading_frame_remastered.png'); background-size: cover; background-position: center; background-repeat: no-repeat; background-clip: border-box; margin-top: 100px; box-shadow: inset 0px -30px 70px 50px #000;">
+                                                <div name="EA_frame" style="width:750px; height:690px; display: inline-block; margin: 0; padding: 0; border: 0; background-image: url('img/loading_frame_remastered.png'); background-size: contain; background-position: center; background-repeat: no-repeat; margin-top: -100px;">
+                                                    <center style="padding-top: 460px; width: 570px; margin: 0; border: 0;">
+                                                        <br>
+                                                        <p id="loading_message" style="font-size: 30px; color: white; text-shadow: 0px 0px 6px black; margin-bottom: 15px;">
+                                                            Cargando Empire & Allies...<br>
+                                                            <small style="font-size: 16px;">Firebase Realtime ✅</small>
+                                                        </p>                                            
+                                                        <div id="progress_bar" style="display: flex; width: 45%; height: 18px; border-radius: 10px; overflow: hidden; background-color: #6d5554; box-shadow: inset 0px 4px 9px -1px #4c4635;"> 
+                                                            <div id="inner_progress_bar" style="width: 0%; background-color: #e6b104; box-shadow: inset 0px 4px 9px -1px #fae361; transition: width 1s linear;"></div>
+                                                        </div>
+                                                    </center>
+                                                    <div style="width: 750px; position: absolute; top: 0; padding-top: 280px;">
+                                                        <center>
+                                                            <div id="flash_enabler" style="width: 300px;">
+                                                                <object codebase="http://download.macromedia.com/pub/shockwave/cabs/flash/swflash.cab#version=6,0,0,0" width=300>
+                                                                    <embed id="game_embed" WMODE="transparent" bgcolor="white" TYPE="application/x-shockwave-flash" PLUGINSPAGE="http://www.macromedia.com/go/getflashplayer" width=300>
+                                                                    </embed>
+                                                                </object>
+                                                            </div>
+                                                        </center>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <script type="text/javascript" charset="utf-8">
+                                            loadingScreenUpdate()
+                                        </script>
+                                    </div>
+                                </div>
+                            </center>
+                        </div>
+                        <div style="margin: 30px"></div>
+                        <div class="uiInterstitialBar uiBoxGray topborder">
+                            <center>
+                                <h3 style="display: inline;">Debug Panel</h3>
+                                <p style="display: inline;">~</p>
+                                <a href="nodebug.html">No debug mode</a>
+                            </center>
+                            <br>
+                            <div class="clearfix">
+                                <center><table style="border: 1px solid #3b5998; border-radius: 5px;">
+                                    <tr>
+                                        <td><div class="logbox" id="tutorial_step">&nbsp;</div></td>
+                                        <td><div class="logbox" id="world_log">&nbsp;</div></td>
+                                        <td><div class="logbox" id="other_log">&nbsp;</div></td>
+                                    </tr>
+                                </table></center>
+                                <center>
+                                    <p style="color: #666699;"> <br>
+                                    The Raise the Empires team. Empires &amp; Allies 0.08a.2023_04_28
+                                    </p>
+                                </center>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
-	<!-- SCRIPT PARA FORZAR CARGA DEL JUEGO Y MANEJAR ERRORES -->
-	<script>
-	// Fuerza la carga del juego después de que todo esté listo
-	function forceGameLoad() {
-		console.log("🚀 Forzando carga del juego con Firebase Realtime...");
-		
-		// Verificar si Firebase está listo
-		const checkFirebase = setInterval(() => {
-			if (window.currentFirebaseProfile) {
-				clearInterval(checkFirebase);
-				console.log("✅ Firebase listo, iniciando juego...");
-				
-				// Ocultar pantalla de carga después de 5 segundos
-				setTimeout(() => {
-					const loadingScreen = document.getElementById('loading_game');
-					if (loadingScreen) {
-						loadingScreen.style.display = 'none';
-						console.log("🎮 Juego cargado - Pantalla de carga ocultada");
-					}
-					
-					// Mostrar mensaje de éxito
-					showGameReadyMessage();
-				}, 5000);
-			}
-		}, 500);
-	}
+    <!-- SCRIPT PARA MANEJAR ERRORES Y PETICIONES -->
+    <script>
+    // Interceptar y manejar peticiones fallidas
+    (function() {
+        const originalFetch = window.fetch;
+        window.fetch = function(...args) {
+            const url = args[0];
+            if (typeof url === 'string' && url.includes('127.0.0.1')) {
+                console.log(`🔄 Interceptando petición a: ${url}`);
+                const newUrl = url.replace('https://ztk2025.github.io/empire/127.0.0.1', './');
+                console.log(`📁 Redirigiendo a: ${newUrl}`);
+                args[0] = newUrl;
+            }
+            return originalFetch.apply(this, args);
+        };
 
-	function showGameReadyMessage() {
-		// Crear mensaje de juego listo
-		const readyMsg = document.createElement('div');
-		readyMsg.style.cssText = `
-			position: fixed;
-			top: 50%;
-			left: 50%;
-			transform: translate(-50%, -50%);
-			background: rgba(0, 0, 0, 0.9);
-			color: white;
-			padding: 20px;
-			border-radius: 10px;
-			z-index: 10000;
-			text-align: center;
-			border: 2px solid #00b894;
-		`;
-		readyMsg.innerHTML = `
-			<h3>🎮 Empire & Allies Listo</h3>
-			<p>Jugando como: <strong>${window.currentFirebaseProfile?.name || 'ZTK'}</strong></p>
-			<p>Firebase Realtime conectado ✅</p>
-			<button onclick="this.parentElement.remove()" style="margin-top: 10px; padding: 5px 15px; background: #00b894; color: white; border: none; border-radius: 5px; cursor: pointer;">
-				Cerrar
-			</button>
-		`;
-		document.body.appendChild(readyMsg);
-	}
+        const originalOpen = XMLHttpRequest.prototype.open;
+        XMLHttpRequest.prototype.open = function(method, url, ...rest) {
+            if (url && url.includes('127.0.0.1')) {
+                console.log(`🔄 Interceptando XMLHttpRequest a: ${url}`);
+                const newUrl = url.replace('https://ztk2025.github.io/empire/127.0.0.1', './');
+                console.log(`📁 Redirigiendo a: ${newUrl}`);
+                url = newUrl;
+            }
+            return originalOpen.call(this, method, url, ...rest);
+        };
+    })();
 
-	// Script para manejar errores de carga del Flash
-	function checkFlashStatus() {
-		const flashObject = document.getElementById('ea');
-		const gameEmbed = document.getElementById('game_embed');
-		
-		if (!flashObject || !gameEmbed) {
-			console.error("❌ Objeto Flash no encontrado");
-			showErrorNotification("Error: Flash object not found");
-			return;
-		}
-		
-		// Verificar si Flash está cargando
-		setTimeout(() => {
-			const loadingScreen = document.getElementById('loading_game');
-			if (loadingScreen && loadingScreen.style.display !== 'none') {
-				console.log("⚠️ Flash puede estar teniendo problemas para cargar");
-				showErrorNotification("El juego está teniendo problemas para cargar. Verifica que Flash esté habilitado en tu navegador.");
-			}
-		}, 15000);
-	}
+    // Manejar específicamente record_stats.php
+    function handleRecordStats() {
+        const originalSend = XMLHttpRequest.prototype.send;
+        XMLHttpRequest.prototype.send = function(data) {
+            if (this._url && this._url.includes('record_stats.php')) {
+                console.log('📊 Simulando record_stats.php exitoso');
+                setTimeout(() => {
+                    if (this.onload) this.onload.call(this);
+                    if (this.onreadystatechange) this.onreadystatechange.call(this);
+                }, 100);
+                return;
+            }
+            return originalSend.call(this, data);
+        };
 
-	function showErrorNotification(message) {
-		const errorMsg = document.createElement('div');
-		errorMsg.style.cssText = `
-			position: fixed;
-			top: 50%;
-			left: 50%;
-			transform: translate(-50%, -50%);
-			background: rgba(255, 0, 0, 0.95);
-			color: white;
-			padding: 25px;
-			border-radius: 10px;
-			z-index: 10000;
-			text-align: center;
-			border: 2px solid #ff7675;
-			max-width: 400px;
-			font-family: Arial, sans-serif;
-			box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
-		`;
-		errorMsg.innerHTML = `
-			<h3 style="margin: 0 0 15px 0; color: white;">⚠️ Error de Carga</h3>
-			<p style="margin: 0 0 20px 0; line-height: 1.4;">${message}</p>
-			<div style="margin-top: 15px;">
-				<button onclick="location.reload()" style="padding: 10px 20px; background: white; color: red; border: none; border-radius: 5px; cursor: pointer; margin-right: 10px; font-weight: bold;">
-					🔄 Recargar
-				</button>
-				<button onclick="this.parentElement.parentElement.remove()" style="padding: 10px 20px; background: #ff7675; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold;">
-					❌ Cerrar
-				</button>
-			</div>
-		`;
-		document.body.appendChild(errorMsg);
-	}
+        const originalOpen = XMLHttpRequest.prototype.open;
+        XMLHttpRequest.prototype.open = function(method, url, ...rest) {
+            this._url = url;
+            if (url && url.includes('record_stats.php')) {
+                console.log('📊 Interceptando record_stats.php');
+                url = './';
+            }
+            return originalOpen.call(this, method, url, ...rest);
+        };
+    }
 
-	// Verificar el estado del Flash
-	window.addEventListener('load', function() {
-		setTimeout(checkFlashStatus, 5000);
-	});
+    // Inicializar
+    handleRecordStats();
 
-	// Capturar errores de recursos
-	window.addEventListener('error', function(e) {
-		if (e.target.src && (e.target.src.includes('.xml') || e.target.src.includes('.swf'))) {
-			console.warn(`⚠️ Recurso no encontrado: ${e.target.src}`);
-		}
-	});
+    // Fuerza la carga del juego
+    function forceGameLoad() {
+        console.log("🚀 Forzando carga del juego con Firebase Realtime...");
+        
+        const checkFirebase = setInterval(() => {
+            if (window.currentFirebaseProfile) {
+                clearInterval(checkFirebase);
+                console.log("✅ Firebase listo, iniciando juego...");
+                
+                setTimeout(() => {
+                    const loadingScreen = document.getElementById('loading_game');
+                    if (loadingScreen) {
+                        loadingScreen.style.display = 'none';
+                        console.log("🎮 Juego cargado - Pantalla de carga ocultada");
+                    }
+                    showGameReadyMessage();
+                }, 5000);
+            }
+        }, 500);
+    }
 
-	// También verificar si Flash Player está disponible
-	function checkFlashPlayer() {
-		if (!navigator.mimeTypes["application/x-shockwave-flash"]) {
-			showErrorNotification("Flash Player no está disponible en este navegador. Usa un navegador con soporte para Flash o habilita Flash manualmente.");
-		}
-	}
+    function showGameReadyMessage() {
+        const readyMsg = document.createElement('div');
+        readyMsg.style.cssText = `
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            z-index: 10000;
+            text-align: center;
+            border: 2px solid #00b894;
+        `;
+        readyMsg.innerHTML = `
+            <h3>🎮 Empire & Allies Listo</h3>
+            <p>Jugando como: <strong>${window.currentFirebaseProfile?.name || 'ZTK'}</strong></p>
+            <p>Firebase Realtime conectado ✅</p>
+            <button onclick="this.parentElement.remove()" style="margin-top: 10px; padding: 5px 15px; background: #00b894; color: white; border: none; border-radius: 5px; cursor: pointer;">
+                Cerrar
+            </button>
+        `;
+        document.body.appendChild(readyMsg);
+    }
 
-	// Ejecutar verificación de Flash
-	setTimeout(checkFlashPlayer, 2000);
+    window.addEventListener('load', function() {
+        console.log("🏠 home.html completamente cargado con Firebase Realtime");
+        setTimeout(forceGameLoad, 2000);
+    });
 
-	// Iniciar cuando todo esté cargado
-	window.addEventListener('load', function() {
-		console.log("🏠 home.html completamente cargado con Firebase Realtime");
-		setTimeout(forceGameLoad, 2000);
-	});
+    setTimeout(() => {
+        const loadingScreen = document.getElementById('loading_game');
+        if (loadingScreen && loadingScreen.style.display !== 'none') {
+            console.log("⚠️ Forzando cierre de pantalla de carga después de timeout");
+            loadingScreen.style.display = 'none';
+            showGameReadyMessage();
+        }
+    }, 10000);
 
-	// También intentar si el juego no carga después de 10 segundos
-	setTimeout(() => {
-		const loadingScreen = document.getElementById('loading_game');
-		if (loadingScreen && loadingScreen.style.display !== 'none') {
-			console.log("⚠️ Forzando cierre de pantalla de carga después de timeout");
-			loadingScreen.style.display = 'none';
-			showGameReadyMessage();
-		}
-	}, 10000);
-
-	console.log("🎯 Sistema de Firebase Realtime integrado en home.html");
-	</script>
+    console.log("🎯 Sistema de Firebase Realtime integrado en home.html");
+    </script>
 </body>
 </html>
