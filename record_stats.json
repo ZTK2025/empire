@@ -1,7 +1,13 @@
 {
-    "status": "success", 
+    "status": "success",
     "message": "Game statistics recorded successfully",
     "timestamp": 1762231499,
     "player": "ZTK",
-    "version": "1.0.0"
+    "version": "1.0.0",
+    "data": {
+        "game_session": "active",
+        "player_level": 1,
+        "resources_collected": 0,
+        "buildings_constructed": 0
+    }
 }
