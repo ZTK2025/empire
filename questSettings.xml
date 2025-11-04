@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<quests>
+    <quest id="tutorial_start">
+        <name>Welcome to Empire &amp; Allies</name>
+        <description>Learn the basics of building your empire</description>
+        <enabled>true</enabled>
+        <requiredLevel>1</requiredLevel>
+        <rewardGold>100</rewardGold>
+        <rewardOil>50</rewardOil>
+    </quest>
+    <quest id="build_headquarters">
+        <name>Build Headquarters</name>
+        <description>Construct your main headquarters building</description>
+        <enabled>true</enabled>
+        <requiredLevel>1</requiredLevel>
+        <rewardGold>200</rewardGold>
+        <rewardOil>100</rewardOil>
+    </quest>
+    <quest id="recruit_soldiers">
+        <name>Recruit First Soldiers</name>
+        <description>Build a barracks and recruit your first soldiers</description>
+        <enabled>true</enabled>
+        <requiredLevel>2</requiredLevel>
+        <rewardGold>150</rewardGold>
+        <rewardOil>75</rewardOil>
+    </quest>
+</quests>
