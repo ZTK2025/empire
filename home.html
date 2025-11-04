@@ -301,6 +301,10 @@
 			
 			return;
 		}
+		
+		window.addEventListener('DOMContentLoaded', function() {
+			setTimeout(initializeFirebase, 1000);
+		});
 	</script>
 </head>
 <body class="ego_wide canvas center_fixed_width_app fbx UIPage_LoggedOut liquid hideBanner Locale_en_US">
@@ -369,13 +373,16 @@
 										<a title="Discord group" href="https://discord.gg/xrNE6Hg" target="_blank"><div class="zBarButtons" id="zBarButtons" style="background-image: url('img/discord.png');"></div></a>
 										<a title="Github repository" href="https://github.com/AcidCaos/raisetheempires#readme" target="_blank"><div class="zBarButtons" id="zBarButtons" style="background-image: url('img/github.png');"></div></a>
 										<a title="Termux/GNU/Linux version" href="https://github.com/Questandachievement7Developer/RaiseTheEmpiresPort_Native" target="_blank"><div class="zBarButtons" id="zBarButtons" style="background-image: url('img/termux.png');"></div></a>
+										<!-- VERSION -->
 										<br><br>
 										<p style="display: inline">Raise the Empires 0.08a.2023_04_28</p>
 									</div>
 									<div style="float: right; height:97px; padding: 4px;">
+										<!-- zbar column 3 content here-->
 										<img class="rewardVilleLogo" src="img/RewardVilleLogo.png" style="vertical-align: bottom; display: inline; margin-top: 53px;">
 									</div>
 									<div style="float: right; height:97px; padding: 4px; display: flex;">
+										<!-- zbar column 2 content here-->
 										<img src="img/Zcoins.png" style="align-self:flex-end">							
 									</div>
 								</div>
@@ -399,12 +406,14 @@
 									<div style="position: relative; width: 1000px; min-height: 750px; margin: 0; padding: 0; border: 0;">
 										<div id="game_object" style="width: 1000px; min-height: 750px; display: inline-block; margin: 0; padding: 0; border: 0;">
 											<object codebase="http://download.macromedia.com/pub/shockwave/cabs/flash/swflash.cab#version=6,0,0,0" WIDTH="1000" HEIGHT="750" id="ea" ALIGN="">
+												<!-- RUTA CORREGIDA CON PARÁMETROS ACTUALIZADOS -->
 												<param NAME=movie VALUE="files/ZGame.109338_tracer2.swf">
-												<param name=FlashVars value="serverTime=1761716794.63979&is_staging=true&debugMode=true&generateSchema=1&sn_app_url=&stats=1">
+												<param name=FlashVars value="serverTime=1761716794.63979&is_staging=true&debugMode=true&generateSchema=1&sn_app_url=&stats=1&baseURL=./&assetsURL=files/&configURL=./&localURL=./&gameID=empires">
 												<param NAME=quality VALUE=high>
 												<param NAME=bgcolor VALUE=#333399>
 												<param name="allowFullScreen" value="true" />
-												<embed id="game_embed" src="files/ZGame.109338_tracer2.swf" allowFullScreen="true" FlashVars="serverTime=1761716794.63979&is_staging=true&debugMode=true&generateSchema=1&sn_app_url=&stats=1" quality=high bgcolor="#333399" WIDTH="1000" HEIGHT="750" NAME="ea" ALIGN="" TYPE="application/x-shockwave-flash" PLUGINSPAGE="http://www.macromedia.com/go/getflashplayer">
+												<!-- RUTA CORREGIDA CON PARÁMETROS ACTUALIZADOS -->
+												<embed id="game_embed" src="files/ZGame.109338_tracer2.swf" allowFullScreen="true" FlashVars="serverTime=1761716794.63979&is_staging=true&debugMode=true&generateSchema=1&sn_app_url=&stats=1&baseURL=./&assetsURL=files/&configURL=./&localURL=./&gameID=empires" quality=high bgcolor="#333399" WIDTH="1000" HEIGHT="750" NAME="ea" ALIGN="" TYPE="application/x-shockwave-flash" PLUGINSPAGE="http://www.macromedia.com/go/getflashplayer">
 												</embed>
 											</object>
 										</div>
@@ -425,6 +434,7 @@
 													<div style="width: 750px; position: absolute; top: 0; padding-top: 280px;">
 														<center>
 															<div id="flash_enabler" style="width: 300px;">
+																<!-- Fake Flash object to trigger flash enable popup -->
 																<object codebase="http://download.macromedia.com/pub/shockwave/cabs/flash/swflash.cab#version=6,0,0,0" width=300>
 																	<embed id="game_embed" WMODE="transparent" bgcolor="white" TYPE="application/x-shockwave-flash" PLUGINSPAGE="http://www.macromedia.com/go/getflashplayer" width=300>
 																	</embed>
@@ -471,73 +481,153 @@
 		</div>
 	</div>
 
+	<!-- SCRIPT PARA FORZAR CARGA DEL JUEGO Y MANEJAR ERRORES -->
 	<script>
-		// Inicializar Firebase cuando el DOM esté listo
-		window.addEventListener('DOMContentLoaded', function() {
-			setTimeout(initializeFirebase, 1000);
-		});
-
-		// Script para forzar carga del juego
-		function forceGameLoad() {
-			console.log("🚀 Forzando carga del juego...");
-			
-			const checkFirebase = setInterval(() => {
-				if (window.currentFirebaseProfile) {
-					clearInterval(checkFirebase);
-					console.log("✅ Firebase listo, iniciando juego...");
+	// Fuerza la carga del juego después de que todo esté listo
+	function forceGameLoad() {
+		console.log("🚀 Forzando carga del juego con Firebase Realtime...");
+		
+		// Verificar si Firebase está listo
+		const checkFirebase = setInterval(() => {
+			if (window.currentFirebaseProfile) {
+				clearInterval(checkFirebase);
+				console.log("✅ Firebase listo, iniciando juego...");
+				
+				// Ocultar pantalla de carga después de 5 segundos
+				setTimeout(() => {
+					const loadingScreen = document.getElementById('loading_game');
+					if (loadingScreen) {
+						loadingScreen.style.display = 'none';
+						console.log("🎮 Juego cargado - Pantalla de carga ocultada");
+					}
 					
-					setTimeout(() => {
-						const loadingScreen = document.getElementById('loading_game');
-						if (loadingScreen) {
-							loadingScreen.style.display = 'none';
-							console.log("🎮 Juego cargado - Pantalla de carga ocultada");
-						}
-						showGameReadyMessage();
-					}, 5000);
-				}
-			}, 500);
+					// Mostrar mensaje de éxito
+					showGameReadyMessage();
+				}, 5000);
+			}
+		}, 500);
+	}
+
+	function showGameReadyMessage() {
+		// Crear mensaje de juego listo
+		const readyMsg = document.createElement('div');
+		readyMsg.style.cssText = `
+			position: fixed;
+			top: 50%;
+			left: 50%;
+			transform: translate(-50%, -50%);
+			background: rgba(0, 0, 0, 0.9);
+			color: white;
+			padding: 20px;
+			border-radius: 10px;
+			z-index: 10000;
+			text-align: center;
+			border: 2px solid #00b894;
+		`;
+		readyMsg.innerHTML = `
+			<h3>🎮 Empire & Allies Listo</h3>
+			<p>Jugando como: <strong>${window.currentFirebaseProfile?.name || 'ZTK'}</strong></p>
+			<p>Firebase Realtime conectado ✅</p>
+			<button onclick="this.parentElement.remove()" style="margin-top: 10px; padding: 5px 15px; background: #00b894; color: white; border: none; border-radius: 5px; cursor: pointer;">
+				Cerrar
+			</button>
+		`;
+		document.body.appendChild(readyMsg);
+	}
+
+	// Script para manejar errores de carga del Flash
+	function checkFlashStatus() {
+		const flashObject = document.getElementById('ea');
+		const gameEmbed = document.getElementById('game_embed');
+		
+		if (!flashObject || !gameEmbed) {
+			console.error("❌ Objeto Flash no encontrado");
+			showErrorNotification("Error: Flash object not found");
+			return;
 		}
-
-		function showGameReadyMessage() {
-			const readyMsg = document.createElement('div');
-			readyMsg.style.cssText = `
-				position: fixed;
-				top: 50%;
-				left: 50%;
-				transform: translate(-50%, -50%);
-				background: rgba(0, 0, 0, 0.9);
-				color: white;
-				padding: 20px;
-				border-radius: 10px;
-				z-index: 10000;
-				text-align: center;
-				border: 2px solid #00b894;
-			`;
-			readyMsg.innerHTML = `
-				<h3>🎮 Empire & Allies Listo</h3>
-				<p>Jugando como: <strong>${window.currentFirebaseProfile?.name || 'ZTK'}</strong></p>
-				<p>Firebase Realtime conectado ✅</p>
-				<button onclick="this.parentElement.remove()" style="margin-top: 10px; padding: 5px 15px; background: #00b894; color: white; border: none; border-radius: 5px; cursor: pointer;">
-					Cerrar
-				</button>
-			`;
-			document.body.appendChild(readyMsg);
-		}
-
-		window.addEventListener('load', function() {
-			console.log("🏠 home.html completamente cargado");
-			setTimeout(forceGameLoad, 2000);
-		});
-
-		// Timeout de seguridad
+		
+		// Verificar si Flash está cargando
 		setTimeout(() => {
 			const loadingScreen = document.getElementById('loading_game');
 			if (loadingScreen && loadingScreen.style.display !== 'none') {
-				console.log("⚠️ Forzando cierre de pantalla de carga después de timeout");
-				loadingScreen.style.display = 'none';
-				showGameReadyMessage();
+				console.log("⚠️ Flash puede estar teniendo problemas para cargar");
+				showErrorNotification("El juego está teniendo problemas para cargar. Verifica que Flash esté habilitado en tu navegador.");
 			}
-		}, 10000);
+		}, 15000);
+	}
+
+	function showErrorNotification(message) {
+		const errorMsg = document.createElement('div');
+		errorMsg.style.cssText = `
+			position: fixed;
+			top: 50%;
+			left: 50%;
+			transform: translate(-50%, -50%);
+			background: rgba(255, 0, 0, 0.95);
+			color: white;
+			padding: 25px;
+			border-radius: 10px;
+			z-index: 10000;
+			text-align: center;
+			border: 2px solid #ff7675;
+			max-width: 400px;
+			font-family: Arial, sans-serif;
+			box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+		`;
+		errorMsg.innerHTML = `
+			<h3 style="margin: 0 0 15px 0; color: white;">⚠️ Error de Carga</h3>
+			<p style="margin: 0 0 20px 0; line-height: 1.4;">${message}</p>
+			<div style="margin-top: 15px;">
+				<button onclick="location.reload()" style="padding: 10px 20px; background: white; color: red; border: none; border-radius: 5px; cursor: pointer; margin-right: 10px; font-weight: bold;">
+					🔄 Recargar
+				</button>
+				<button onclick="this.parentElement.parentElement.remove()" style="padding: 10px 20px; background: #ff7675; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold;">
+					❌ Cerrar
+				</button>
+			</div>
+		`;
+		document.body.appendChild(errorMsg);
+	}
+
+	// Verificar el estado del Flash
+	window.addEventListener('load', function() {
+		setTimeout(checkFlashStatus, 5000);
+	});
+
+	// Capturar errores de recursos
+	window.addEventListener('error', function(e) {
+		if (e.target.src && (e.target.src.includes('.xml') || e.target.src.includes('.swf'))) {
+			console.warn(`⚠️ Recurso no encontrado: ${e.target.src}`);
+		}
+	});
+
+	// También verificar si Flash Player está disponible
+	function checkFlashPlayer() {
+		if (!navigator.mimeTypes["application/x-shockwave-flash"]) {
+			showErrorNotification("Flash Player no está disponible en este navegador. Usa un navegador con soporte para Flash o habilita Flash manualmente.");
+		}
+	}
+
+	// Ejecutar verificación de Flash
+	setTimeout(checkFlashPlayer, 2000);
+
+	// Iniciar cuando todo esté cargado
+	window.addEventListener('load', function() {
+		console.log("🏠 home.html completamente cargado con Firebase Realtime");
+		setTimeout(forceGameLoad, 2000);
+	});
+
+	// También intentar si el juego no carga después de 10 segundos
+	setTimeout(() => {
+		const loadingScreen = document.getElementById('loading_game');
+		if (loadingScreen && loadingScreen.style.display !== 'none') {
+			console.log("⚠️ Forzando cierre de pantalla de carga después de timeout");
+			loadingScreen.style.display = 'none';
+			showGameReadyMessage();
+		}
+	}, 10000);
+
+	console.log("🎯 Sistema de Firebase Realtime integrado en home.html");
 	</script>
 </body>
 </html>
