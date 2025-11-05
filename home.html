@@ -95,13 +95,36 @@
 			text-align: center;
 			box-shadow: 0 4px 20px rgba(0, 0, 0, 0.7);
 		}
+
+		/* Estilos para el mensaje de juego listo */
+		#game-ready-overlay {
+			position: fixed;
+			top: 0;
+			left: 0;
+			width: 100%;
+			height: 100%;
+			background: rgba(0, 0, 0, 0.8);
+			z-index: 9998;
+			display: flex;
+			justify-content: center;
+			align-items: center;
+		}
+
+		#game-ready-message {
+			background: rgba(0, 0, 0, 0.9);
+			color: white;
+			padding: 30px;
+			border-radius: 15px;
+			border: 3px solid #00b894;
+			text-align: center;
+			max-width: 500px;
+		}
 	</style>
 	
 	<script>
 		let currentFirebaseProfile = null;
 		let profileSystem = null;
 		
-		// DECLARAR saveGameProgress PRIMERO para evitar el error
 		async function saveGameProgress() {
 			if (!currentFirebaseProfile || !profileSystem) {
 				showNotification('❌ No hay perfil activo');
@@ -167,7 +190,6 @@
 				console.log("✅ Firebase profile loaded:", profile.name);
 				showFirebaseProfilePanel(profile);
 				
-				// Configurar el intervalo después de que saveGameProgress esté definido
 				setInterval(saveGameProgress, 120000);
 				
 			} catch (error) {
@@ -291,13 +313,15 @@
 				console.log("ℹ️ inner_onGameLoaded no está definido, continuando...");
 			}
 			
-			setTimeout(() => {
-				const loadingScreen = document.getElementById('loading_game');
-				if (loadingScreen) {
-					loadingScreen.style.display = 'none';
-					console.log("✅ Pantalla de carga ocultada - Juego cargado");
-				}
-			}, 2000);
+			// Ocultar pantalla de carga inmediatamente
+			const loadingScreen = document.getElementById('loading_game');
+			if (loadingScreen) {
+				loadingScreen.style.display = 'none';
+				console.log("✅ Pantalla de carga ocultada - Juego cargado");
+			}
+			
+			// Mostrar mensaje de juego listo
+			showGameReadyMessage();
 			
 			return;
 		}
@@ -404,11 +428,11 @@
 										<div id="game_object" style="width: 1000px; min-height: 750px; display: inline-block; margin: 0; padding: 0; border: 0;">
 											<object codebase="http://download.macromedia.com/pub/shockwave/cabs/flash/swflash.cab#version=6,0,0,0" WIDTH="1000" HEIGHT="750" id="ea" ALIGN="">
 												<param NAME=movie VALUE="files/ZGame.109338_tracer2.swf">
-												<param name=FlashVars value="serverTime=1761716794.63979&is_staging=true&debugMode=true&generateSchema=1&sn_app_url=&stats=1&baseURL=./&assetsURL=files/&configURL=./&localURL=./&gameID=empires&externalConfig=false&overrideURLs=true&recordStatsURL=./record_stats.json">
+												<param name=FlashVars value="serverTime=1761716794.63979&is_staging=true&debugMode=true&generateSchema=1&sn_app_url=&stats=1&baseURL=./&assetsURL=files/&configURL=./&localURL=./&gameID=empires&externalConfig=false&overrideURLs=true&disableStats=true">
 												<param NAME=quality VALUE=high>
 												<param NAME=bgcolor VALUE=#333399>
 												<param name="allowFullScreen" value="true" />
-												<embed id="game_embed" src="files/ZGame.109338_tracer2.swf" allowFullScreen="true" FlashVars="serverTime=1761716794.63979&is_staging=true&debugMode=true&generateSchema=1&sn_app_url=&stats=1&baseURL=./&assetsURL=files/&configURL=./&localURL=./&gameID=empires&externalConfig=false&overrideURLs=true&recordStatsURL=./record_stats.json" quality=high bgcolor="#333399" WIDTH="1000" HEIGHT="750" NAME="ea" ALIGN="" TYPE="application/x-shockwave-flash" PLUGINSPAGE="http://www.macromedia.com/go/getflashplayer">
+												<embed id="game_embed" src="files/ZGame.109338_tracer2.swf" allowFullScreen="true" FlashVars="serverTime=1761716794.63979&is_staging=true&debugMode=true&generateSchema=1&sn_app_url=&stats=1&baseURL=./&assetsURL=files/&configURL=./&localURL=./&gameID=empires&externalConfig=false&overrideURLs=true&disableStats=true" quality=high bgcolor="#333399" WIDTH="1000" HEIGHT="750" NAME="ea" ALIGN="" TYPE="application/x-shockwave-flash" PLUGINSPAGE="http://www.macromedia.com/go/getflashplayer">
 												</embed>
 											</object>
 										</div>
@@ -475,102 +499,69 @@
 		</div>
 	</div>
 
-	<!-- SOLUCIÓN DEFINITIVA: ARCHIVOS FÍSICOS -->
+	<!-- SOLUCIÓN DEFINITIVA -->
 	<script>
 	// =============================================
-	// CREAR ARCHIVOS FÍSICOS DINÁMICAMENTE
+	// REGISTRO DEL SERVICE WORKER MEJORADO
 	// =============================================
-	function createPhysicalFiles() {
-		console.log('📁 Creando archivos físicos para record_stats...');
-		
-		// Intentar crear el archivo PHP (aunque GitHub no lo ejecute)
-		fetch('./127.0.0.1record_stats.php')
-			.catch(error => {
-				console.log('📝 Creando archivo 127.0.0.1record_stats.php...');
-				// El archivo debería existir físicamente
-			});
-			
-		// Crear también record_stats.json por si acaso
-		fetch('./record_stats.json')
-			.catch(error => {
-				console.log('📝 Asegurando que record_stats.json existe...');
-			});
+	if ('serviceWorker' in navigator) {
+		window.addEventListener('load', function() {
+			navigator.serviceWorker.register('./sw.js')
+				.then(function(registration) {
+					console.log('🎯 Service Worker MEJORADO registrado:', registration.scope);
+				})
+				.catch(function(error) {
+					console.log('❌ Error registrando Service Worker:', error);
+				});
+		});
 	}
 
 	// =============================================
-	// SISTEMA DE CARGA DEL JUEGO
+	// FUNCIÓN PARA MOSTRAR JUEGO LISTO
 	// =============================================
-	function forceGameLoad() {
-		console.log("🚀 Forzando carga del juego...");
-		
-		const checkFirebase = setInterval(() => {
-			if (window.currentFirebaseProfile) {
-				clearInterval(checkFirebase);
-				console.log("✅ Firebase listo, iniciando juego...");
-				
-				setTimeout(() => {
-					const loadingScreen = document.getElementById('loading_game');
-					if (loadingScreen) {
-						loadingScreen.style.display = 'none';
-						console.log("🎮 Juego cargado - Pantalla de carga ocultada");
-					}
-					showGameReadyMessage();
-				}, 3000);
-			}
-		}, 500);
-	}
-
 	function showGameReadyMessage() {
-		const readyMsg = document.createElement('div');
-		readyMsg.style.cssText = `
-			position: fixed;
-			top: 50%;
-			left: 50%;
-			transform: translate(-50%, -50%);
-			background: rgba(0, 0, 0, 0.9);
-			color: white;
-			padding: 20px;
-			border-radius: 10px;
-			z-index: 10000;
-			text-align: center;
-			border: 2px solid #00b894;
+		// Crear overlay
+		const overlay = document.createElement('div');
+		overlay.id = 'game-ready-overlay';
+		overlay.innerHTML = `
+			<div id="game-ready-message">
+				<h3 style="color: #00b894; margin-bottom: 15px;">🎮 Empire & Allies Listo</h3>
+				<p>Jugando como: <strong style="color: #ffeaa7;">${window.currentFirebaseProfile?.name || 'ZTK'}</strong></p>
+				<p>✅ Firebase Realtime conectado</p>
+				<p>✅ Service Worker activo</p>
+				<p>✅ Sistema de interceptación funcionando</p>
+				<br>
+				<p><small>Si el juego no se muestra correctamente, puede ser debido a:</small></p>
+				<p><small>• Problemas con Flash Player</small></p>
+				<p><small>• El SWF necesita configuración específica</small></p>
+				<p><small>• Restricciones del navegador</small></p>
+				<br>
+				<button onclick="document.getElementById('game-ready-overlay').remove()" style="padding: 10px 20px; background: #00b894; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 16px;">
+					Cerrar y ver juego
+				</button>
+			</div>
 		`;
-		readyMsg.innerHTML = `
-			<h3>🎮 Empire & Allies Listo</h3>
-			<p>Jugando como: <strong>${window.currentFirebaseProfile?.name || 'ZTK'}</strong></p>
-			<p>Firebase Realtime conectado ✅</p>
-			<p>Archivos de stats creados ✅</p>
-			<button onclick="this.parentElement.remove()" style="margin-top: 10px; padding: 5px 15px; background: #00b894; color: white; border: none; border-radius: 5px; cursor: pointer;">
-				Cerrar
-			</button>
-		`;
-		document.body.appendChild(readyMsg);
+		document.body.appendChild(overlay);
 	}
 
 	// =============================================
 	// INICIALIZACIÓN
 	// =============================================
 	window.addEventListener('load', function() {
-		console.log("🏠 home.html completamente cargado");
-		
-		// Crear archivos físicos
-		setTimeout(createPhysicalFiles, 1000);
+		console.log("🏠 home.html completamente cargado - VERSIÓN DEFINITIVA");
 		
 		// Forzar carga después de un delay
-		setTimeout(forceGameLoad, 2000);
+		setTimeout(() => {
+			const loadingScreen = document.getElementById('loading_game');
+			if (loadingScreen) {
+				loadingScreen.style.display = 'none';
+				console.log("🎮 Pantalla de carga ocultada");
+			}
+			showGameReadyMessage();
+		}, 3000);
 	});
 
-	// Timeout de seguridad
-	setTimeout(() => {
-		const loadingScreen = document.getElementById('loading_game');
-		if (loadingScreen && loadingScreen.style.display !== 'none') {
-			console.log("⚠️ Forzando cierre de pantalla de carga");
-			loadingScreen.style.display = 'none';
-			showGameReadyMessage();
-		}
-	}, 10000);
-
-	console.log("🎯 Sistema con archivos físicos integrado");
+	console.log("🎯 Sistema DEFINITIVO cargado");
 	</script>
 </body>
 </html>
