@@ -1,256 +1,35 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="utf-8"/>
     <title>Empires & Allies</title>
-    <link rel="shortcut icon" href="img/icon.png"/>
-    <link rel="stylesheet" href="css/facebook.css"/>
-    <link rel="stylesheet" href="css/buttons.css"/>
-    <link rel="stylesheet" href="css/zbar.css"/>
-    
-    <!-- SOLO FIREBASE -->
-    <script src="//code.jquery.com/jquery-3.4.1.min.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
-    <script src="firebase/firebase-config.js"></script>
-    <script src="firebase/profiles.js"></script>
-    
-    <style>
-        body { 
-            font-family: Arial, sans-serif; 
-            background: #f0f2f5;
-            margin: 0;
-            padding: 0;
-        }
-        
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-        
-        .status-box {
-            background: white;
-            padding: 30px;
-            border-radius: 10px;
-            margin: 20px 0;
-            text-align: center;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        
-        .success {
-            border-left: 5px solid #00b894;
-        }
-        
-        .error {
-            border-left: 5px solid #e17055;
-        }
-        
-        .warning {
-            border-left: 5px solid #fdcb6e;
-        }
-        
-        .game-frame {
-            width: 1000px;
-            height: 750px;
-            margin: 20px auto;
-            border: 3px solid #2c3e50;
-            border-radius: 10px;
-            background: #1a1a1a;
-        }
-        
-        .btn {
-            background: #00b894;
-            color: white;
-            border: none;
-            padding: 12px 25px;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 16px;
-            margin: 10px;
-        }
-        
-        .btn:hover {
-            background: #00a085;
-        }
-    </style>
+    <script src="https://unpkg.com/@ruffle-rs/ruffle"></script>
 </head>
 <body>
-    <!-- BANNER SUPERIOR -->
-    <div class="-cx-PRIVATE-fbLayout__root">
-        <div id="pagelet_bluebar">
-            <div class="loggedout_menubar_container">
-                <div class="clearfix loggedout_menubar">
-                    <a class="lfloat" href="/" title="Facebook Home">
-                        <i class="fb_logo img sp_e2gpgs sx_584554">
-                            <u>Facebook logo</u>
-                        </i>
-                    </a>
-                    <ul class="rfloat" style="color:#fff;">
-                        <li><a class="uiButton uiButtonConfirm" href="index.html">🏠 Menú</a></li>
-                    </ul>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- CONTENIDO PRINCIPAL -->
-    <div class="container">
-        <div class="status-box" id="status">
-            <h2>🎮 Empire & Allies</h2>
-            <p>Verificando sistema...</p>
-        </div>
-
-        <!-- CONTENEDOR DEL JUEGO -->
-        <div class="game-frame" id="game-container">
-            <div style="color: white; padding: 50px; text-align: center;">
-                <h3>Cargando juego...</h3>
-                <p id="game-status">Inicializando</p>
-            </div>
-        </div>
-    </div>
-
+    <h1>🎮 Empire & Allies</h1>
+    <div id="game" style="width:1000px;height:750px;margin:auto;"></div>
+    
     <script>
-        // DIAGNÓSTICO COMPLETO
-        console.log('🔍 INICIANDO DIAGNÓSTICO...');
-        
-        async function diagnoseSystem() {
-            const statusDiv = document.getElementById('status');
-            const gameStatus = document.getElementById('game-status');
-            
-            // 1. Verificar SWF
-            gameStatus.textContent = 'Verificando archivo SWF...';
-            try {
-                const swfResponse = await fetch('files/ZGame.109338_tracer2.swf');
-                if (!swfResponse.ok) {
-                    throw new Error(`SWF no encontrado (${swfResponse.status})`);
+        // Verificar tamaño SWF primero
+        fetch('files/ZGame.109338_tracer2.swf')
+            .then(r => r.blob())
+            .then(blob => {
+                if (blob.size < 1000000) {
+                    document.body.innerHTML = `
+                        <h1>❌ ERROR: SWF CORRUPTO</h1>
+                        <p>Tamaño: ${blob.size} bytes (debería ser >5MB)</p>
+                        <p><strong>Solución:</strong> Descarga el SWF correcto de archive.org</p>
+                        <button onclick="window.location.href='https://archive.org/details/EmpiresAllies'">
+                            📥 Descargar SWF
+                        </button>
+                    `;
+                    return;
                 }
                 
-                const swfSize = swfResponse.headers.get('content-length');
-                console.log('✅ SWF encontrado. Tamaño:', swfSize, 'bytes');
-                gameStatus.textContent = 'SWF encontrado ✓';
-                
-            } catch (error) {
-                console.error('❌ SWF no encontrado:', error);
-                showError(`ARCHIVO SWF NO ENCONTRADO: ${error.message}`);
-                return;
-            }
-            
-            // 2. Verificar Firebase
-            gameStatus.textContent = 'Verificando Firebase...';
-            try {
-                // Inicializar Firebase simple
-                const profileSystem = new ProfileSystem();
-                const profile = profileSystem.getSelectedProfile();
-                
-                if (profile) {
-                    console.log('✅ Firebase funcionando. Perfil:', profile.name);
-                    gameStatus.textContent = `Firebase: ${profile.name} ✓`;
-                } else {
-                    console.log('⚠️ Firebase sin perfil');
-                    gameStatus.textContent = 'Firebase: Sin perfil';
-                }
-                
-            } catch (error) {
-                console.error('❌ Firebase error:', error);
-                gameStatus.textContent = 'Firebase: Error';
-            }
-            
-            // 3. Intentar cargar Ruffle
-            gameStatus.textContent = 'Cargando emulador Flash...';
-            loadRuffleSimple();
-        }
-        
-        function loadRuffleSimple() {
-            const script = document.createElement('script');
-            // URL CORRECTA de Ruffle
-            script.src = 'https://unpkg.com/@ruffle-rs/ruffle';
-            
-            script.onload = function() {
-                console.log('✅ Ruffle cargado correctamente');
-                document.getElementById('game-status').textContent = 'Ruffle cargado ✓';
-                initializeGame();
-            };
-            
-            script.onerror = function() {
-                console.error('❌ Error cargando Ruffle');
-                document.getElementById('game-status').textContent = 'Error cargando Ruffle';
-                showError('No se pudo cargar el emulador Flash. Intenta recargar la página.');
-            };
-            
-            document.head.appendChild(script);
-        }
-        
-        function initializeGame() {
-            const gameStatus = document.getElementById('game-status');
-            const container = document.getElementById('game-container');
-            
-            try {
-                gameStatus.textContent = 'Inicializando juego...';
-                
-                // Usar Ruffle de forma simple
-                const ruffle = window.RufflePlayer.newest();
-                const player = ruffle.createPlayer();
-                
-                container.innerHTML = '';
-                container.appendChild(player);
-                
-                gameStatus.textContent = 'Cargando SWF...';
-                
-                player.load('files/ZGame.109338_tracer2.swf')
-                    .then(() => {
-                        console.log('🎮 JUEGO CARGADO EXITOSAMENTE');
-                        gameStatus.textContent = '¡JUEGO CARGADO!';
-                        showSuccess('Empire & Allies está funcionando correctamente');
-                    })
-                    .catch(error => {
-                        console.error('❌ Error cargando SWF:', error);
-                        showError(`Error cargando el juego: ${error.message}`);
-                    });
-                    
-            } catch (error) {
-                console.error('❌ Error inicializando juego:', error);
-                showError(`Error: ${error.message}`);
-            }
-        }
-        
-        function showSuccess(message) {
-            document.getElementById('status').innerHTML = `
-                <div class="status-box success">
-                    <h2>✅ ¡ÉXITO!</h2>
-                    <p><strong>${message}</strong></p>
-                    <p>El juego debería estar funcionando ahora.</p>
-                    <button class="btn" onclick="location.reload()">🔄 Recargar</button>
-                </div>
-            `;
-        }
-        
-        function showError(message) {
-            document.getElementById('status').innerHTML = `
-                <div class="status-box error">
-                    <h2>❌ PROBLEMA DETECTADO</h2>
-                    <p><strong>${message}</strong></p>
-                    <div style="text-align: left; background: rgba(0,0,0,0.05); padding: 15px; border-radius: 5px; margin: 15px 0;">
-                        <h4>🔧 SOLUCIONES:</h4>
-                        <ol>
-                            <li><strong>Verifica que el archivo existe:</strong><br>
-                                Asegúrate de que <code>files/ZGame.109338_tracer2.swf</code> está en tu repositorio</li>
-                            <li><strong>Si no existe, descárgalo:</strong><br>
-                                Ve a <a href="https://archive.org/details/EmpiresAllies" target="_blank">archive.org/details/EmpiresAllies</a></li>
-                            <li><strong>Renombra el archivo:</strong><br>
-                                El archivo debe llamarse exactamente <code>ZGame.109338_tracer2.swf</code></li>
-                        </ol>
-                    </div>
-                    <button class="btn" onclick="location.reload()">🔄 Reintentar</button>
-                    <button class="btn" onclick="window.location.href='index.html'">🏠 Menú Principal</button>
-                </div>
-            `;
-        }
-        
-        // INICIAR DIAGNÓSTICO
-        window.addEventListener('DOMContentLoaded', function() {
-            setTimeout(diagnoseSystem, 1000);
-        });
+                // Cargar juego si el SWF es válido
+                const player = window.RufflePlayer.newest().createPlayer();
+                document.getElementById('game').appendChild(player);
+                player.load('files/ZGame.109338_tracer2.swf');
+            });
     </script>
 </body>
 </html>
