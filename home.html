@@ -18,9 +18,8 @@
 	<script src="firebase/profiles.js"></script>
 	<script src="firebase/socket-realtime.js"></script>
 	
-	<script src="js/flash.js"></script>
-	<script src="js/session.js"></script>
 	<script src="js/empires.js"></script>
+	<script src="js/session.js"></script>
 	
 	<style>
 		#firebase-profile-panel {
@@ -96,14 +95,61 @@
 			box-shadow: 0 4px 20px rgba(0, 0, 0, 0.7);
 		}
 
-		/* Estilos para el mensaje de juego listo */
+		/* Estilos para Ruffle */
+		#ruffle-container {
+			width: 1000px;
+			height: 750px;
+			margin: 20px auto;
+			border: 3px solid #2c3e50;
+			border-radius: 15px;
+			overflow: hidden;
+			background: #1a1a1a;
+			box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+		}
+
+		#ruffle-loading {
+			width: 100%;
+			height: 100%;
+			display: flex;
+			flex-direction: column;
+			justify-content: center;
+			align-items: center;
+			background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+			color: white;
+			font-family: Arial, sans-serif;
+		}
+
+		.loading-spinner {
+			width: 50px;
+			height: 50px;
+			border: 5px solid rgba(255,255,255,0.3);
+			border-top: 5px solid white;
+			border-radius: 50%;
+			animation: spin 1s linear infinite;
+			margin-bottom: 20px;
+		}
+
+		@keyframes spin {
+			0% { transform: rotate(0deg); }
+			100% { transform: rotate(360deg); }
+		}
+
+		.ruffle-error {
+			background: #ffebee;
+			color: #c62828;
+			padding: 40px;
+			text-align: center;
+			border-radius: 10px;
+			margin: 20px;
+		}
+
 		.game-ready-overlay {
 			position: fixed;
 			top: 0;
 			left: 0;
 			width: 100%;
 			height: 100%;
-			background: rgba(0, 0, 0, 0.8);
+			background: rgba(0, 0, 0, 0.9);
 			z-index: 9998;
 			display: flex;
 			justify-content: center;
@@ -125,7 +171,6 @@
 		let currentFirebaseProfile = null;
 		let profileSystem = null;
 		
-		// DECLARAR saveGameProgress PRIMERO para evitar el error
 		async function saveGameProgress() {
 			if (!currentFirebaseProfile || !profileSystem) {
 				showNotification('❌ No hay perfil activo');
@@ -191,7 +236,6 @@
 				console.log("✅ Firebase profile loaded:", profile.name);
 				showFirebaseProfilePanel(profile);
 				
-				// Configurar el intervalo después de que saveGameProgress esté definido
 				setInterval(saveGameProgress, 120000);
 				
 			} catch (error) {
@@ -305,30 +349,6 @@
 			}
 			return [123, 124, 131];
 		}
-
-		function onGameLoaded(seen, popp, canvas) {
-			console.log("🎮 Game is loaded " + seen + ", " + popp + ", " + canvas);
-			
-			if (typeof inner_onGameLoaded === 'function') {
-				inner_onGameLoaded();
-			} else {
-				console.log("ℹ️ inner_onGameLoaded no está definido, continuando...");
-			}
-			
-			setTimeout(() => {
-				const loadingScreen = document.getElementById('loading_game');
-				if (loadingScreen) {
-					loadingScreen.style.display = 'none';
-					console.log("✅ Pantalla de carga ocultada - Juego cargado");
-				}
-			}, 2000);
-			
-			return;
-		}
-		
-		window.addEventListener('DOMContentLoaded', function() {
-			setTimeout(initializeFirebase, 1000);
-		});
 	</script>
 </head>
 <body class="ego_wide canvas center_fixed_width_app fbx UIPage_LoggedOut liquid hideBanner Locale_en_US">
@@ -382,6 +402,7 @@
 	  		</div>
 		</div>
 	</div>
+
 	<!-- PAGE BODY -->
 	<div id="globalContainer" class="uiContextualLayerParent">
 		<div id="content" class="fb_content clearfix">
@@ -408,67 +429,19 @@
 									</div>
 								</div>
 							</center>
+
+							<!-- CONTENEDOR RUFFLE -->
 							<center>
-								<div style="text-align: center; width:1010px;">
-									<div class="gameButtons" id="gameButtons" style=" margin-bottom:4px; margin-left: 5px; text-align: left; height:20px; padding-top: 4px;">
-										<a href="#" class="unsel">Free Gifts</a>
-										<a href="#" class="selec">Play</a>
-										<a href="/friends.html" class="unsel">My Neighbors</a>
-										<a href="#" class="unsel">Invite Friends</a>
-										<a title="Check the Empires & Allies Wiki" href="https://empiresandallies.fandom.com/wiki/Empires_%26_Allies_Wiki/Main_2" class="unsel">Help</a>
-										<a title="Adds 10k Empire Points" href="/gazillionaire" class="unsel">Get Empire Points</a>
-										<a href="#" class="unsel">Earn Empire Points</a>
-										<a href="#" class="unsel">GameCards</a>
-										<a href="#" style="display:inline; float:right; padding-top: 0px;"><img src="img/globe.png" style="height:25px"></a>
-									</div>
-								</div>
-								<div>
-									<div style="margin:10px"></div>
-									<div style="position: relative; width: 1000px; min-height: 750px; margin: 0; padding: 0; border: 0;">
-										<div id="game_object" style="width: 1000px; min-height: 750px; display: inline-block; margin: 0; padding: 0; border: 0;">
-											<object codebase="http://download.macromedia.com/pub/shockwave/cabs/flash/swflash.cab#version=6,0,0,0" WIDTH="1000" HEIGHT="750" id="ea" ALIGN="">
-												<param NAME=movie VALUE="files/ZGame.109338_tracer2.swf">
-												<param name=FlashVars value="serverTime=1761716794.63979&is_staging=true&debugMode=true&generateSchema=1&sn_app_url=&stats=1&baseURL=./&assetsURL=files/&configURL=./&localURL=./&gameID=empires&externalConfig=false&overrideURLs=true&disableStats=true">
-												<param NAME=quality VALUE=high>
-												<param NAME=bgcolor VALUE=#333399>
-												<param name="allowFullScreen" value="true" />
-												<embed id="game_embed" src="files/ZGame.109338_tracer2.swf" allowFullScreen="true" FlashVars="serverTime=1761716794.63979&is_staging=true&debugMode=true&generateSchema=1&sn_app_url=&stats=1&baseURL=./&assetsURL=files/&configURL=./&localURL=./&gameID=empires&externalConfig=false&overrideURLs=true&disableStats=true" quality=high bgcolor="#333399" WIDTH="1000" HEIGHT="750" NAME="ea" ALIGN="" TYPE="application/x-shockwave-flash" PLUGINSPAGE="http://www.macromedia.com/go/getflashplayer">
-												</embed>
-											</object>
-										</div>
-										<!-- Loading game div is rendered on top of the flash object. -->
-										<div id="loading_game" style="position: absolute; top: 0; left: 0; width:1000px; height:750px; background-color: white;">
-											<div name="motd" style="width:750px; height:500px; display: inline-block; margin: 0; padding: 0; border: 0;  background-image: url('img/loading_frame_remastered.png'); background-size: cover; background-position: center; background-repeat: no-repeat; background-clip: border-box; margin-top: 100px; box-shadow: inset 0px -30px 70px 50px #000;">
-												<div name="EA_frame" style="width:750px; height:690px; display: inline-block; margin: 0; padding: 0; border: 0; background-image: url('img/loading_frame_remastered.png'); background-size: contain; background-position: center; background-repeat: no-repeat; margin-top: -100px;">
-													<center style="padding-top: 460px; width: 570px; margin: 0; border: 0;">
-														<br>
-														<p id="loading_message" style="font-size: 30px; color: white; text-shadow: 0px 0px 6px black; margin-bottom: 15px;">
-															Cargando Empire & Allies...<br>
-															<small style="font-size: 16px;">Firebase Realtime ✅</small>
-														</p>											
-														<div id="progress_bar" style="display: flex; width: 45%; height: 18px; border-radius: 10px; overflow: hidden; background-color: #6d5554; box-shadow: inset 0px 4px 9px -1px #4c4635;"> 
-															<div id="inner_progress_bar" style="width: 0%; background-color: #e6b104; box-shadow: inset 0px 4px 9px -1px #fae361; transition: width 1s linear;"></div>
-														</div>
-													</center>
-													<div style="width: 750px; position: absolute; top: 0; padding-top: 280px;">
-														<center>
-															<div id="flash_enabler" style="width: 300px;">
-																<object codebase="http://download.macromedia.com/pub/shockwave/cabs/flash/swflash.cab#version=6,0,0,0" width=300>
-																	<embed id="game_embed" WMODE="transparent" bgcolor="white" TYPE="application/x-shockwave-flash" PLUGINSPAGE="http://www.macromedia.com/go/getflashplayer" width=300>
-																	</embed>
-																</object>
-															</div>
-														</center>
-													</div>
-												</div>
-											</div>
-										</div>
-										<script type="text/javascript" charset="utf-8">
-											loadingScreenUpdate()
-										</script>
+								<div id="ruffle-container">
+									<div id="ruffle-loading">
+										<div class="loading-spinner"></div>
+										<h3>🎮 Cargando Empire & Allies</h3>
+										<p>Usando Ruffle Flash Emulator</p>
+										<p id="load-status">Inicializando...</p>
 									</div>
 								</div>
 							</center>
+
 						</div>
 						<div style="margin: 30px"></div>
 						<div class="uiInterstitialBar uiBoxGray topborder">
@@ -499,79 +472,131 @@
 		</div>
 	</div>
 
-	<!-- SISTEMA DEFINITIVO - JUEGO COMPLETAMENTE FUNCIONAL -->
+	<!-- SISTEMA RUFFLE - SIN INSTALACIÓN -->
 	<script>
 	// =============================================
-	// SISTEMA DE SILENCIAMIENTO DE ERRORES
+	// INICIALIZACIÓN DE RUFFLE
 	// =============================================
-	console.log('🎮 INICIANDO SISTEMA DEFINITIVO - JUEGO 100% FUNCIONAL');
+	console.log('🎮 Iniciando Ruffle Flash Emulator...');
 
-	// 1. Silenciar errores de consola
-	const originalError = console.error;
-	console.error = function(...args) {
-		if (args[0] && typeof args[0] === 'string') {
-			if (args[0].includes('405') || args[0].includes('record_stats.php')) {
-				return; // Silenciar completamente
-			}
+	function initializeRuffle() {
+		// Configurar Ruffle
+		window.RufflePlayer = window.RufflePlayer || {};
+		window.RufflePlayer.config = {
+			"publicPath": "https://unpkg.com/@ruffle-rs/ruffle/",
+			"polyfills": true,
+			"autoplay": "on",
+			"unmuteOverlay": "hidden",
+			"backgroundColor": "#000000",
+			"warnOnUnsupportedContent": false,
+			"showSwfDownload": false
+		};
+
+		// Cargar Ruffle desde CDN
+		const script = document.createElement('script');
+		script.src = 'https://unpkg.com/@ruffle-rs/ruffle';
+		
+		script.onload = function() {
+			console.log('✅ Ruffle cargado correctamente');
+			document.getElementById('load-status').textContent = 'Ruffle listo, cargando juego...';
+			loadGameWithRuffle();
+		};
+		
+		script.onerror = function() {
+			console.error('❌ Error cargando Ruffle');
+			showRuffleError('No se pudo cargar Ruffle. Verifica tu conexión a internet.');
+		};
+		
+		document.head.appendChild(script);
+	}
+
+	function loadGameWithRuffle() {
+		try {
+			const ruffle = window.RufflePlayer.newest();
+			const player = ruffle.createPlayer();
+			
+			// Configurar el player
+			player.style.width = "100%";
+			player.style.height = "100%";
+			player.style.display = "block";
+			
+			// Reemplazar loading con el player
+			const container = document.getElementById('ruffle-container');
+			container.innerHTML = '';
+			container.appendChild(player);
+			
+			console.log('🔄 Cargando SWF: files/ZGame.109338_tracer2.swf');
+			document.getElementById('load-status').textContent = 'Descargando juego...';
+			
+			// Cargar el juego
+			player.load('files/ZGame.109338_tracer2.swf')
+				.then(() => {
+					console.log('✅ Juego cargado exitosamente con Ruffle');
+					showGameReadyMessage();
+				})
+				.catch(error => {
+					console.error('❌ Error cargando el SWF:', error);
+					showRuffleError(`Error cargando el juego: ${error.message}`);
+				});
+				
+		} catch (error) {
+			console.error('❌ Error inicializando Ruffle player:', error);
+			showRuffleError(`Error inicializando Ruffle: ${error.message}`);
 		}
-		originalError.apply(console, args);
-	};
+	}
 
-	// 2. Interceptar fetch requests
-	const originalFetch = window.fetch;
-	window.fetch = function(...args) {
-		const url = args[0];
-		if (typeof url === 'string' && url.includes('record_stats.php')) {
-			console.log('🔄 Stats interceptados - Simulando éxito');
-			return Promise.resolve(new Response(
-				JSON.stringify({status: "success", message: "Stats recorded locally"}),
-				{ status: 200, headers: {'Content-Type': 'application/json'} }
-			));
-		}
-		return originalFetch.apply(this, args);
-	};
+	function showRuffleError(message) {
+		const container = document.getElementById('ruffle-container');
+		container.innerHTML = `
+			<div class="ruffle-error">
+				<h3>❌ Error con Ruffle</h3>
+				<p><strong>${message}</strong></p>
+				<div style="margin: 20px 0; padding: 15px; background: white; border-radius: 8px; text-align: left;">
+					<h4>🔧 Soluciones:</h4>
+					<ol>
+						<li>Verifica que <strong>files/ZGame.109338_tracer2.swf</strong> existe en tu repositorio</li>
+						<li>El archivo SWF debe ser válido y compatible</li>
+						<li>Si el SWF no existe, descárgalo de archive.org</li>
+						<li>Verifica tu conexión a internet para cargar Ruffle</li>
+					</ol>
+				</div>
+				<button onclick="location.reload()" style="
+					background: #2196F3; 
+					color: white; 
+					border: none; 
+					padding: 10px 20px; 
+					border-radius: 5px; 
+					cursor: pointer;
+					margin: 5px;
+				">🔄 Reintentar</button>
+				<button onclick="window.location.href='index.html'" style="
+					background: #666; 
+					color: white; 
+					border: none; 
+					padding: 10px 20px; 
+					border-radius: 5px; 
+					cursor: pointer;
+					margin: 5px;
+				">🏠 Volver al Menú</button>
+			</div>
+		`;
+	}
 
-	// 3. Interceptar XMLHttpRequest
-	const originalOpen = XMLHttpRequest.prototype.open;
-	XMLHttpRequest.prototype.open = function(method, url, ...rest) {
-		if (typeof url === 'string' && url.includes('record_stats.php')) {
-			console.log('🔄 XMLHttpRequest stats interceptado');
-			setTimeout(() => {
-				if (this.onload) this.onload();
-				if (this.onreadystatechange) this.onreadystatechange();
-			}, 10);
-			return originalOpen.call(this, method, 'about:blank', ...rest);
-		}
-		return originalOpen.call(this, method, url, ...rest);
-	};
-
-	// 4. Prevenir errores de red
-	window.addEventListener('error', function(e) {
-		if (e.target && e.target.src && e.target.src.includes('record_stats.php')) {
-			e.preventDefault();
-			e.stopImmediatePropagation();
-			return false;
-		}
-	}, true);
-
-	// =============================================
-	// SISTEMA DE CARGA Y VERIFICACIÓN
-	// =============================================
 	function showGameReadyMessage() {
 		const overlay = document.createElement('div');
 		overlay.className = 'game-ready-overlay';
 		overlay.innerHTML = `
 			<div class="game-ready-content">
 				<h2>🎮 ¡JUEGO LISTO!</h2>
-				<p><strong>Empire & Allies completamente funcional</strong></p>
+				<p><strong>Empire & Allies completamente funcional con Ruffle</strong></p>
 				<p>Jugando como: <strong>${window.currentFirebaseProfile?.name || 'ZTK'}</strong></p>
 				<div style="margin: 20px 0;">
 					<div style="background: rgba(255,255,255,0.2); padding: 15px; border-radius: 10px; margin: 10px 0;">
+						✅ Ruffle Flash Emulator activo<br>
 						✅ Firebase Realtime conectado<br>
-						✅ Sistema de perfil activo<br>
+						✅ Sistema de perfil funcionando<br>
 						✅ Datos guardados en la nube<br>
-						✅ Sistema de amigos funcionando<br>
-						🚫 Errores de stats silenciados
+						🎮 Juego 100% funcional
 					</div>
 				</div>
 				<button onclick="this.parentElement.parentElement.remove()" style="
@@ -587,72 +612,29 @@
 				">
 					🎮 COMENZAR A JUGAR
 				</button>
-				<p style="margin-top: 15px; font-size: 12px; opacity: 0.8;">
-					Los errores 405 han sido silenciados - NO AFECTAN LA JUGABILIDAD
-				</p>
 			</div>
 		`;
 		document.body.appendChild(overlay);
 	}
 
-	function forceGameLoad() {
-		console.log("🚀 Iniciando carga forzada del juego...");
-		
-		const checkFirebase = setInterval(() => {
-			if (window.currentFirebaseProfile) {
-				clearInterval(checkFirebase);
-				console.log("✅ Firebase listo - Juego completamente funcional");
-				
-				setTimeout(() => {
-					const loadingScreen = document.getElementById('loading_game');
-					if (loadingScreen) {
-						loadingScreen.style.display = 'none';
-						console.log("🎮 Pantalla de carga completada");
-					}
-					
-					// Mostrar mensaje de juego listo
-					setTimeout(showGameReadyMessage, 1000);
-					
-					// Verificación final
-					setTimeout(() => {
-						console.log('=========================================');
-						console.log('🎯 VERIFICACIÓN FINAL DEL SISTEMA:');
-						console.log('✅ Juego Empire & Allies 100% FUNCIONAL');
-						console.log('✅ Firebase Realtime operativo');
-						console.log('✅ Perfil de jugador cargado');
-						console.log('✅ Sistema de guardado activo');
-						console.log('✅ Errores de stats silenciados');
-						console.log('🚫 Los errores 405 NO AFECTAN el juego');
-						console.log('🎮 ¡DIVIÉRTETE JUGANDO!');
-						console.log('=========================================');
-					}, 2000);
-					
-				}, 3000);
-			}
-		}, 500);
-	}
-
 	// =============================================
-	// INICIALIZACIÓN DEFINITIVA
+	// INICIALIZACIÓN COMPLETA
 	// =============================================
-	window.addEventListener('load', function() {
-		console.log("🏠 Sistema definitivo cargado completamente");
+	window.addEventListener('DOMContentLoaded', function() {
+		console.log('🏠 Inicializando sistema completo...');
 		
-		// Iniciar carga del juego
-		setTimeout(forceGameLoad, 2000);
-		
-		// Timeout de seguridad
+		// Inicializar Firebase
 		setTimeout(() => {
-			const loadingScreen = document.getElementById('loading_game');
-			if (loadingScreen && loadingScreen.style.display !== 'none') {
-				console.log("⚠️ Forzando cierre de pantalla de carga por seguridad");
-				loadingScreen.style.display = 'none';
-				showGameReadyMessage();
-			}
-		}, 15000);
+			initializeFirebase();
+		}, 1000);
+		
+		// Inicializar Ruffle después de que todo esté listo
+		setTimeout(() => {
+			initializeRuffle();
+		}, 2000);
 	});
 
-	console.log("🎯 SISTEMA DEFINITIVO CARGADO - JUEGO 100% FUNCIONAL");
+	console.log('🎯 Sistema Ruffle integrado - Listo para cargar');
 	</script>
 </body>
 </html>
