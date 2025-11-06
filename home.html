@@ -1,35 +1,150 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Empires & Allies</title>
+    <title>Empires & Allies - TEST</title>
     <script src="https://unpkg.com/@ruffle-rs/ruffle"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #1a1a1a;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            font-family: Arial, sans-serif;
+            color: white;
+        }
+        
+        #game-container {
+            width: 1000px;
+            height: 750px;
+            border: 3px solid #00b894;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 20px 0;
+            background: black;
+        }
+        
+        #status {
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+            text-align: center;
+            min-width: 500px;
+        }
+        
+        .loading { background: #fdcb6e; color: black; }
+        .success { background: #00b894; color: white; }
+        .error { background: #e17055; color: white; }
+        
+        button {
+            background: #00b894;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+    </style>
 </head>
 <body>
-    <h1>🎮 Empire & Allies</h1>
-    <div id="game" style="width:1000px;height:750px;margin:auto;"></div>
+    <h1>🎮 Empire & Allies - TEST DIRECTO</h1>
     
+    <div id="status" class="loading">
+        Iniciando prueba del juego...
+    </div>
+    
+    <div id="game-container">
+        <div style="color: white; text-align: center; padding: 50px;">
+            <h3>Cargando...</h3>
+            <p id="progress">Verificando archivo SWF</p>
+        </div>
+    </div>
+
     <script>
-        // Verificar tamaño SWF primero
-        fetch('files/ZGame.109338_tracer2.swf')
-            .then(r => r.blob())
-            .then(blob => {
+        console.log('🎮 INICIANDO PRUEBA DIRECTA...');
+        
+        async function testGame() {
+            const status = document.getElementById('status');
+            const progress = document.getElementById('progress');
+            
+            // 1. Verificar SWF
+            progress.textContent = 'Verificando archivo SWF...';
+            try {
+                const response = await fetch('files/ZGame.109338_tracer2.swf');
+                const blob = await response.blob();
+                
+                console.log('📊 Tamaño SWF:', blob.size, 'bytes');
+                
                 if (blob.size < 1000000) {
-                    document.body.innerHTML = `
-                        <h1>❌ ERROR: SWF CORRUPTO</h1>
-                        <p>Tamaño: ${blob.size} bytes (debería ser >5MB)</p>
-                        <p><strong>Solución:</strong> Descarga el SWF correcto de archive.org</p>
-                        <button onclick="window.location.href='https://archive.org/details/EmpiresAllies'">
-                            📥 Descargar SWF
-                        </button>
+                    status.className = 'error';
+                    status.innerHTML = `
+                        ❌ SWF CORRUPTO/VACÍO<br>
+                        <small>Tamaño: ${blob.size} bytes (debería ser >5MB)</small>
+                    `;
+                    progress.innerHTML = `
+                        <strong>SOLUCIÓN:</strong><br>
+                        1. Ve a <a href="https://archive.org/details/EmpiresAllies" target="_blank" style="color: yellow;">archive.org/details/EmpiresAllies</a><br>
+                        2. Descarga el SWF más grande<br>
+                        3. Nómbralo: ZGame.109338_tracer2.swf<br>
+                        4. Súbelo a la carpeta files/
                     `;
                     return;
                 }
                 
-                // Cargar juego si el SWF es válido
-                const player = window.RufflePlayer.newest().createPlayer();
-                document.getElementById('game').appendChild(player);
-                player.load('files/ZGame.109338_tracer2.swf');
-            });
+                status.className = 'success';
+                status.textContent = `✅ SWF VÁLIDO (${(blob.size / 1024 / 1024).toFixed(1)} MB)`;
+                
+            } catch (error) {
+                status.className = 'error';
+                status.textContent = '❌ ERROR: SWF no encontrado';
+                progress.innerHTML = `
+                    El archivo <strong>files/ZGame.109338_tracer2.swf</strong> no existe<br>
+                    Descárgalo de archive.org y colócalo en esa carpeta
+                `;
+                return;
+            }
+            
+            // 2. Cargar Ruffle
+            progress.textContent = 'Cargando emulador Flash...';
+            if (!window.RufflePlayer) {
+                status.className = 'error';
+                status.textContent = '❌ Error cargando Ruffle';
+                return;
+            }
+            
+            // 3. Inicializar juego
+            progress.textContent = 'Inicializando juego...';
+            try {
+                const ruffle = window.RufflePlayer.newest();
+                const player = ruffle.createPlayer();
+                
+                document.getElementById('game-container').innerHTML = '';
+                document.getElementById('game-container').appendChild(player);
+                
+                progress.textContent = 'Cargando Empire & Allies...';
+                
+                // Cargar el juego
+                await player.load('files/ZGame.109338_tracer2.swf');
+                
+                status.className = 'success';
+                status.textContent = '🎮 ¡JUEGO CARGADO EXITOSAMENTE!';
+                progress.textContent = 'Empire & Allies está funcionando';
+                
+                console.log('✅ JUEGO INICIADO CORRECTAMENTE');
+                
+            } catch (error) {
+                status.className = 'error';
+                status.textContent = '❌ Error cargando el juego';
+                progress.textContent = `Error: ${error.message}`;
+                console.error('Error:', error);
+            }
+        }
+        
+        // Iniciar prueba
+        window.addEventListener('DOMContentLoaded', testGame);
     </script>
 </body>
 </html>
