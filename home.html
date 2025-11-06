@@ -78,24 +78,6 @@
 			background: #636e72;
 		}
 		
-		.firebase-notification {
-			position: fixed;
-			top: 50%;
-			left: 50%;
-			transform: translate(-50%, -50%);
-			background: rgba(0, 0, 0, 0.95);
-			color: white;
-			padding: 20px 30px;
-			border-radius: 10px;
-			z-index: 10001;
-			font-family: Arial, sans-serif;
-			border: 2px solid #00b894;
-			font-size: 16px;
-			text-align: center;
-			box-shadow: 0 4px 20px rgba(0, 0, 0, 0.7);
-		}
-
-		/* Estilos para Ruffle */
 		#ruffle-container {
 			width: 1000px;
 			height: 750px;
@@ -141,29 +123,6 @@
 			text-align: center;
 			border-radius: 10px;
 			margin: 20px;
-		}
-
-		.game-ready-overlay {
-			position: fixed;
-			top: 0;
-			left: 0;
-			width: 100%;
-			height: 100%;
-			background: rgba(0, 0, 0, 0.9);
-			z-index: 9998;
-			display: flex;
-			justify-content: center;
-			align-items: center;
-		}
-
-		.game-ready-content {
-			background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-			padding: 30px;
-			border-radius: 15px;
-			text-align: center;
-			color: white;
-			max-width: 500px;
-			box-shadow: 0 10px 30px rgba(0,0,0,0.5);
 		}
 	</style>
 	
@@ -437,7 +396,7 @@
 										<div class="loading-spinner"></div>
 										<h3>🎮 Cargando Empire & Allies</h3>
 										<p>Usando Ruffle Flash Emulator</p>
-										<p id="load-status">Inicializando...</p>
+										<p id="load-status">Inicializando Ruffle...</p>
 									</div>
 								</div>
 							</center>
@@ -472,39 +431,50 @@
 		</div>
 	</div>
 
-	<!-- SISTEMA RUFFLE - SIN INSTALACIÓN -->
+	<!-- RUFFLE - VERSIÓN CORREGIDA -->
 	<script>
-	// =============================================
-	// INICIALIZACIÓN DE RUFFLE
-	// =============================================
 	console.log('🎮 Iniciando Ruffle Flash Emulator...');
 
 	function initializeRuffle() {
-		// Configurar Ruffle
-		window.RufflePlayer = window.RufflePlayer || {};
-		window.RufflePlayer.config = {
-			"publicPath": "https://unpkg.com/@ruffle-rs/ruffle/",
-			"polyfills": true,
-			"autoplay": "on",
-			"unmuteOverlay": "hidden",
-			"backgroundColor": "#000000",
-			"warnOnUnsupportedContent": false,
-			"showSwfDownload": false
-		};
+		console.log('🔄 Cargando Ruffle...');
+		document.getElementById('load-status').textContent = 'Descargando Ruffle...';
 
-		// Cargar Ruffle desde CDN
+		// Usar una versión específica y estable de Ruffle
 		const script = document.createElement('script');
-		script.src = 'https://unpkg.com/@ruffle-rs/ruffle';
+		script.src = 'https://unpkg.com/ruffle-rs@0.1.0-nightly.2023.11.22/ruffle.js';
 		
 		script.onload = function() {
 			console.log('✅ Ruffle cargado correctamente');
-			document.getElementById('load-status').textContent = 'Ruffle listo, cargando juego...';
-			loadGameWithRuffle();
+			document.getElementById('load-status').textContent = 'Ruffle listo, inicializando...';
+			
+			// Esperar a que Ruffle esté completamente inicializado
+			setTimeout(() => {
+				loadGameWithRuffle();
+			}, 1000);
 		};
 		
 		script.onerror = function() {
-			console.error('❌ Error cargando Ruffle');
-			showRuffleError('No se pudo cargar Ruffle. Verifica tu conexión a internet.');
+			console.error('❌ Error cargando Ruffle, intentando con versión alternativa...');
+			loadRuffleAlternative();
+		};
+		
+		document.head.appendChild(script);
+	}
+
+	function loadRuffleAlternative() {
+		// Versión alternativa de Ruffle
+		const script = document.createElement('script');
+		script.src = 'https://unpkg.com/ruffle-mirror@latest/ruffle.js';
+		
+		script.onload = function() {
+			console.log('✅ Ruffle alternativo cargado');
+			document.getElementById('load-status').textContent = 'Ruffle listo, cargando juego...';
+			setTimeout(loadGameWithRuffle, 1000);
+		};
+		
+		script.onerror = function() {
+			console.error('❌ Error cargando ambas versiones de Ruffle');
+			showRuffleError('No se pudo cargar Ruffle. Usa un navegador moderno.');
 		};
 		
 		document.head.appendChild(script);
@@ -512,27 +482,41 @@
 
 	function loadGameWithRuffle() {
 		try {
-			const ruffle = window.RufflePlayer.newest();
-			const player = ruffle.createPlayer();
+			console.log('🔄 Inicializando Ruffle player...');
 			
+			// Verificar diferentes formas de acceder a Ruffle
+			const Ruffle = window.RufflePlayer || window.Ruffle;
+			
+			if (!Ruffle) {
+				throw new Error('Ruffle no está disponible en window');
+			}
+
+			// Crear player - método moderno
+			let player;
+			if (typeof Ruffle.newest === 'function') {
+				player = Ruffle.newest().createPlayer();
+			} else if (typeof Ruffle.createPlayer === 'function') {
+				player = Ruffle.createPlayer();
+			} else {
+				throw new Error('No se pudo crear el player de Ruffle');
+			}
+
 			// Configurar el player
-			player.style.width = "100%";
-			player.style.height = "100%";
-			player.style.display = "block";
-			
-			// Reemplazar loading con el player
 			const container = document.getElementById('ruffle-container');
 			container.innerHTML = '';
+			player.style.width = "100%";
+			player.style.height = "100%";
 			container.appendChild(player);
-			
+
 			console.log('🔄 Cargando SWF: files/ZGame.109338_tracer2.swf');
-			document.getElementById('load-status').textContent = 'Descargando juego...';
-			
+			document.getElementById('load-status').textContent = 'Cargando juego...';
+
 			// Cargar el juego
 			player.load('files/ZGame.109338_tracer2.swf')
 				.then(() => {
 					console.log('✅ Juego cargado exitosamente con Ruffle');
-					showGameReadyMessage();
+					document.getElementById('load-status').textContent = '¡Juego listo!';
+					showGameSuccess();
 				})
 				.catch(error => {
 					console.error('❌ Error cargando el SWF:', error);
@@ -541,7 +525,7 @@
 				
 		} catch (error) {
 			console.error('❌ Error inicializando Ruffle player:', error);
-			showRuffleError(`Error inicializando Ruffle: ${error.message}`);
+			showRuffleError(`Error: ${error.message}`);
 		}
 	}
 
@@ -553,12 +537,12 @@
 				<p><strong>${message}</strong></p>
 				<div style="margin: 20px 0; padding: 15px; background: white; border-radius: 8px; text-align: left;">
 					<h4>🔧 Soluciones:</h4>
-					<ol>
-						<li>Verifica que <strong>files/ZGame.109338_tracer2.swf</strong> existe en tu repositorio</li>
-						<li>El archivo SWF debe ser válido y compatible</li>
+					<ul>
+						<li>Verifica que <strong>files/ZGame.109338_tracer2.swf</strong> existe</li>
+						<li>Actualiza tu navegador a la versión más reciente</li>
+						<li>Prueba en Chrome, Firefox o Edge</li>
 						<li>Si el SWF no existe, descárgalo de archive.org</li>
-						<li>Verifica tu conexión a internet para cargar Ruffle</li>
-					</ol>
+					</ul>
 				</div>
 				<button onclick="location.reload()" style="
 					background: #2196F3; 
@@ -569,72 +553,33 @@
 					cursor: pointer;
 					margin: 5px;
 				">🔄 Reintentar</button>
-				<button onclick="window.location.href='index.html'" style="
-					background: #666; 
-					color: white; 
-					border: none; 
-					padding: 10px 20px; 
-					border-radius: 5px; 
-					cursor: pointer;
-					margin: 5px;
-				">🏠 Volver al Menú</button>
 			</div>
 		`;
 	}
 
-	function showGameReadyMessage() {
-		const overlay = document.createElement('div');
-		overlay.className = 'game-ready-overlay';
-		overlay.innerHTML = `
-			<div class="game-ready-content">
-				<h2>🎮 ¡JUEGO LISTO!</h2>
-				<p><strong>Empire & Allies completamente funcional con Ruffle</strong></p>
-				<p>Jugando como: <strong>${window.currentFirebaseProfile?.name || 'ZTK'}</strong></p>
-				<div style="margin: 20px 0;">
-					<div style="background: rgba(255,255,255,0.2); padding: 15px; border-radius: 10px; margin: 10px 0;">
-						✅ Ruffle Flash Emulator activo<br>
-						✅ Firebase Realtime conectado<br>
-						✅ Sistema de perfil funcionando<br>
-						✅ Datos guardados en la nube<br>
-						🎮 Juego 100% funcional
-					</div>
+	function showGameSuccess() {
+		const loading = document.getElementById('ruffle-loading');
+		if (loading) {
+			loading.innerHTML = `
+				<div style="text-align: center;">
+					<h3 style="color: #00b894;">✅ ¡JUEGO CARGADO!</h3>
+					<p>Empire & Allies está listo para jugar</p>
+					<p>Jugando como: <strong>${window.currentFirebaseProfile?.name || 'ZTK'}</strong></p>
 				</div>
-				<button onclick="this.parentElement.parentElement.remove()" style="
-					background: #00b894; 
-					color: white; 
-					border: none; 
-					padding: 12px 30px; 
-					border-radius: 25px; 
-					font-size: 16px; 
-					cursor: pointer;
-					font-weight: bold;
-					box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-				">
-					🎮 COMENZAR A JUGAR
-				</button>
-			</div>
-		`;
-		document.body.appendChild(overlay);
+			`;
+		}
 	}
 
-	// =============================================
-	// INICIALIZACIÓN COMPLETA
-	// =============================================
+	// Inicialización
 	window.addEventListener('DOMContentLoaded', function() {
 		console.log('🏠 Inicializando sistema completo...');
 		
 		// Inicializar Firebase
-		setTimeout(() => {
-			initializeFirebase();
-		}, 1000);
+		setTimeout(initializeFirebase, 1000);
 		
-		// Inicializar Ruffle después de que todo esté listo
-		setTimeout(() => {
-			initializeRuffle();
-		}, 2000);
+		// Inicializar Ruffle
+		setTimeout(initializeRuffle, 2000);
 	});
-
-	console.log('🎯 Sistema Ruffle integrado - Listo para cargar');
 	</script>
 </body>
 </html>
